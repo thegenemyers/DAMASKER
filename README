@@ -16,7 +16,7 @@ soft-masking all tandem and interspersed repeats in the input data when computin
 overlaps.  This implies that reads that are completely repetitive sequence are not
 scrubbed.  This is typically a small part of the data set and a portion thereof that
 is currently not correctly assembled by any assembly system at the current time, and
-therefore the masking if of minor consequence.  Eventually, these completely masked
+therefore the masking is of minor consequence.  Eventually, these completely masked
 reads will be analyzed in downstream processes that will attempt to resolve ultra-long
 (15Kbp or more) repeats.
 
