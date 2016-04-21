@@ -1,3 +1,5 @@
+DEST_DIR = ~/bin
+
 CFLAGS = -O3 -Wall -Wextra -Wno-unused-result -fno-strict-aliasing
 
 ALL = datander TANmask REPmask HPC.TANmask HPC.REPmask
@@ -25,8 +27,8 @@ clean:
 	rm -f damasker.tar.gz
 
 install:
-	cp $(ALL) ~/bin
+	cp $(ALL) $(DEST_DIR)
 
 package:
 	make clean
-	tar -zcf damasker.tar.gz README *.h *.c Makefile
+	tar -zcf damasker.tar.gz README Makefile *.h *.c
