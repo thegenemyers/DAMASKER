@@ -18,7 +18,7 @@ clean:
 	rm -fr *.dSYM *.o
 
 install:
-	cp ${ALL} ${PREFIX}/bin
+	rsync -av ${ALL} ${PREFIX}/bin
 symlink:
 	ln -sf $(addprefix ${THISDIR}/,${ALL}) ${PREFIX}/bin
 
