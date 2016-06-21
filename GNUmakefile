@@ -20,6 +20,6 @@ clean:
 install:
 	rsync -av ${ALL} ${PREFIX}/bin
 symlink:
-	ln -sf $(addprefix ${THISDIR}/,${ALL}) ${PREFIX}/bin
+	ln -sf $(addprefix ${CURDIR}/,${ALL}) ${PREFIX}/bin
 
 .PHONY: clean all
