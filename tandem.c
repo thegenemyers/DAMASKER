@@ -579,6 +579,12 @@ static int Entwine(Path *jpath, Path *kpath, Trace_Buffer *tbuf, int *where)
   b2 = kpath->bbpos;
   k  = kpath->abpos/MR_tspace;
 
+  if (jpath->abpos == kpath->abpos)
+    { min = abs(y2-b2);
+      if (min == 0)
+        *where = kpath->abpos;
+    }
+
   if (j < k)
     { ac = k*MR_tspace;
 
@@ -630,6 +636,15 @@ static int Entwine(Path *jpath, Path *kpath, Trace_Buffer *tbuf, int *where)
         }
       oflare = i;
 #endif
+    }
+
+  if (jpath->aepos == kpath->aepos)
+    { i = abs(y2-b2);
+      if (i <= min)
+        { min = i;
+          if (i == 0)
+            *where = kpath->aepos;
+        }
     }
 
 #ifdef SEE_ENTWINE
@@ -709,34 +724,30 @@ static int Handle_Redundancies(Path *amatch, int novls, Trace_Buffer *tbuf)
                                               amatch[j].bbpos,amatch[j].bepos);
 #endif
 
-  no = 0;
   for (j = 1; j < novls; j++)
     { jpath = amatch+j;
-      for (k = no; k >= 0; k--)
+      for (k = j-1; k >= 0; k--)
         { kpath = amatch+k;
 
-          if (kpath->abpos == jpath->abpos && kpath->bbpos == jpath->bbpos &&
-              kpath->aepos == jpath->aepos && kpath->bepos == jpath->bepos)
-            break;
+          if (kpath->abpos < 0)
+            continue;
 
-          else if (jpath->abpos < kpath->abpos)
+          if (jpath->abpos < kpath->abpos)
 
             { if (kpath->abpos <= jpath->aepos && kpath->bbpos <= jpath->bepos)
                 { dist = Entwine(jpath,kpath,tbuf,&awhen);
                   if (dist == 0)
                     { if (kpath->aepos > jpath->aepos)
                         { Fusion(jpath,awhen,kpath,tbuf);
-                          amatch[k] = *jpath;
 #ifdef TEST_CONTAIN
                           printf("  Really 3");
 #endif
+                          k = j;
                         }
-                      else
-                        amatch[k] = *jpath;
+                      kpath->abpos = -1;
 #ifdef TEST_CONTAIN
                       printf("  Fuse! A %d %d\n",j,k);
 #endif
-                      break;
                     }
                 }
             }
@@ -747,30 +758,34 @@ static int Handle_Redundancies(Path *amatch, int novls, Trace_Buffer *tbuf)
                 { dist = Entwine(kpath,jpath,tbuf,&awhen);
                   if (dist == 0)
                     { if (kpath->abpos == jpath->abpos)
-                        { if (kpath->aepos < jpath->aepos)
-                            amatch[k] = *jpath;
+                        { if (kpath->aepos > jpath->aepos)
+                            *jpath = *kpath;
                         }
                       else if (jpath->aepos > kpath->aepos)
                         { Fusion(kpath,awhen,jpath,tbuf);
+                          *jpath = *kpath;
 #ifdef TEST_CONTAIN
                           printf("  Really 6");
 #endif
+                          k = j;
                         }
+                      else
+                        *jpath = *kpath;
+                      kpath->abpos = -1;
 #ifdef TEST_CONTAIN
                       printf("  Fuse! B %d %d\n",j,k);
 #endif
-                      break;
                     }
                 }
             }
         }
-      if (k < 0)
-        { no += 1;
-          amatch[no] = *jpath;
-        }
     }
 
-  novls = no+1;
+  no = 0;
+  for (j = 0; j < novls; j++)
+    if (amatch[j].abpos >= 0)
+      amatch[no++] = amatch[j];
+  novls = no;
 
 #ifdef TEST_CONTAIN
   for (j = 0; j < novls; j++)
