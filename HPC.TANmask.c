@@ -17,12 +17,11 @@
 #include <sys/stat.h>
 
 #include "DB.h"
-#include "tandem.h"
 
 #undef  LSF  //  define if want a directly executable LSF script
 
 static char *Usage[] =
-  { "[-vd] [-k<int(12)>] [-w<int(4)>] [-h<int(35)>]",
+  { "[-vd] [-k<int(12)>] [-w<int(4)>] [-h<int(35)>] [-T<int(4)>]",
     "      [-e<double(.70)] [-l<int(500)>] [-s<int(100)]",
     "      [-f<name>] <reads:db|dam> [<first:int>[-<last:int>]"
   };
@@ -53,6 +52,7 @@ int main(int argc, char *argv[])
 
   int    VON, DON;
   int    WINT, HINT, KINT, SINT, LINT;
+  int    NTHREADS;
   double EREL;
   char  *ONAME;
 
@@ -70,6 +70,8 @@ int main(int argc, char *argv[])
     SINT  = 100;
     ONAME = NULL;
     out   = stdout;
+
+    NTHREADS = 4;
 
     j = 1;
     for (i = 1; i < argc; i++)
@@ -103,6 +105,9 @@ int main(int argc, char *argv[])
           case 'w':
             ARG_POSITIVE(WINT,"Log of bin width")
             break;
+          case 'T':
+            ARG_POSITIVE(NTHREADS,"Number of threads")
+            break;
         }
       else
         argv[j++] = argv[i];
@@ -117,6 +122,10 @@ int main(int argc, char *argv[])
         fprintf(stderr,"       %*s %s\n",(int) strlen(Prog_Name),"",Usage[2]);
         exit (1);
       }
+
+    for (j = 1; 2*j <= NTHREADS; j *= 2)
+      ;
+    NTHREADS = j;
   }
 
   //  Make sure DB exists and is partitioned, get number of blocks in partition
@@ -279,6 +288,8 @@ int main(int argc, char *argv[])
           fprintf(out," -l%d",LINT);
         if (SINT != 100)
           fprintf(out," -s%d",SINT);
+        if (NTHREADS != 4)
+          fprintf(out," -T%d",NTHREADS);
         j = i+BUNIT;
         if (j > lblock+1)
           j = lblock+1;

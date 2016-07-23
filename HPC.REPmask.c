@@ -18,13 +18,11 @@
 
 #include "DB.h"
 
-#define NTHREADS 4
-
 #undef  LSF  //  define if want a directly executable LSF script
 
 static char *Usage[] =
   { "[-vbd] [-t<int>] [-w<int(6)>] [-l<int(1000)>] [-s<int(100)>]",
-    "       [-M<int>] [-B<int(4)>] [-D<int( 250)>] [-m<track>]+",
+    "       [-M<int>] [-B<int(4)>] [-D<int( 250)>] [T<int(4)>] [-m<track>]+",
     "       [-k<int(14)>] [-h<int(35)>] [-e<double(.70)>] [-f<name>]",
     "       -g<int> -c<int> <reads:db|dam> [<block:int>[-<range:int>]"
   };
@@ -58,6 +56,7 @@ int main(int argc, char *argv[])
   int    DUNIT, BUNIT;
   int    VON, BON, DON;
   int    WINT, TINT, HINT, KINT, SINT, LINT, MINT;
+  int    NTHREADS;
   double EREL;
   int    MMAX, MTOP;
   char **MASK;
@@ -87,6 +86,8 @@ int main(int argc, char *argv[])
       exit (1);
     ONAME = NULL;
     out   = stdout;
+
+    NTHREADS = 4;
 
     SPAN = -1;
     CINT = -1;
@@ -155,6 +156,9 @@ int main(int argc, char *argv[])
           case 'M':
             ARG_NON_NEGATIVE(MINT,"Memory allocation (in Gb)")
             break;
+          case 'T':
+            ARG_POSITIVE(NTHREADS,"Number of threads")
+            break;
         }
       else
         argv[j++] = argv[i];
@@ -179,6 +183,10 @@ int main(int argc, char *argv[])
       { fprintf(stderr,"%s: Must supply -c parameter\n",Prog_Name);
         exit (1);
       }
+
+    for (j = 1; 2*j <= NTHREADS; j *= 2)
+      ;
+    NTHREADS = j;
   }
 
   //  Make sure DB exists and is partitioned, get number of blocks in partition
@@ -372,6 +380,8 @@ int main(int argc, char *argv[])
               fprintf(out," -s%d",SINT);
             if (MINT >= 0)
               fprintf(out," -M%d",MINT);
+            if (NTHREADS != 4)
+              fprintf(out," -T%d",NTHREADS);
             for (k = 0; k < MTOP; k++)
               fprintf(out," -m%s",MASK[k]);
             if (useblock)

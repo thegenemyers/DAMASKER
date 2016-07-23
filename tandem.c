@@ -94,7 +94,10 @@ static int Binshift;
 static int    Kshift;         //  2*Kmer
 static uint64 Kmask;          //  4^Kmer-1
 
-int Set_Filter_Params(int kmer, int binshift, int hitmin)
+static int NTHREADS;    //  Must be a power of 2
+static int NSHIFT;      //  log_2 NTHREADS
+
+int Set_Filter_Params(int kmer, int binshift, int hitmin, int nthreads)
 { if (kmer <= 1)
     return (1);
 
@@ -107,6 +110,13 @@ int Set_Filter_Params(int kmer, int binshift, int hitmin)
     Kmask = 0xffffffffffffffffllu;
   else
     Kmask = (0x1llu << Kshift) - 1;
+
+  NTHREADS = 1;
+  NSHIFT   = 0;
+  while (2*NTHREADS <= nthreads)
+    { NTHREADS *= 2;
+      NSHIFT   += 1;
+    }
 
   return (0);
 }
@@ -135,7 +145,7 @@ typedef struct
   { int64  beg;
     int64  end;
     int64  tptr[BPOWR];
-    int64  sptr[NTHREADS*BPOWR];
+    int64 *sptr;
   } Lex_Arg;
 
 static void *lex_thread(void *arg)
@@ -387,6 +397,9 @@ static KmerPos *Sort_Kmers(HITS_DB *block, int *len, KmerPos **buffer)
   KmerPos  *src, *trg, *rez;
   int       kmers, nreads;
   int       i, j, x;
+
+  for (i = 0; i < NTHREADS; i++)
+    parmx[i].sptr = (int64 *) alloca(NTHREADS*BPOWR*sizeof(int64));
 
   for (i = 0; i < 16; i++)
     mersort[i] = 0;
@@ -1137,6 +1150,9 @@ void Match_Self(char *aname, HITS_DB *ablock, Align_Spec *aspec)
 
   { int64 powr;
     int   i, nbyte;
+
+    for (i = 0; i < NTHREADS; i++)
+      parmx[i].sptr = (int64 *) alloca(NTHREADS*BPOWR*sizeof(int64));
 
     for (i = 0; i < 16; i++)
       pairsort[i] = 0;
