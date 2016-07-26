@@ -22,8 +22,8 @@
 
 static char *Usage[] =
   { "[-vbd] [-t<int>] [-w<int(6)>] [-l<int(1000)>] [-s<int(100)>]",
-    "       [-M<int>] [-B<int(4)>] [-D<int( 250)>] [T<int(4)>] [-m<track>]+",
-    "       [-k<int(14)>] [-h<int(35)>] [-e<double(.70)>] [-f<name>]",
+    "       [-M<int>] [-B<int(4)>] [-D<int( 250)>] [T<int(4)>] [-f<name>]",
+    "       [-k<int(14)>] [-h<int(35)>] [-e<double(.70)>] [-m<track>]+",
     "       -g<int> -c<int> <reads:db|dam> [<block:int>[-<range:int>]"
   };
 

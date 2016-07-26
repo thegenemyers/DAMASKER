@@ -22,8 +22,8 @@
 
 static char *Usage[] =
   { "[-vd] [-k<int(12)>] [-w<int(4)>] [-h<int(35)>] [-T<int(4)>]",
-    "      [-e<double(.70)] [-l<int(500)>] [-s<int(100)]",
-    "      [-f<name>] <reads:db|dam> [<first:int>[-<last:int>]"
+    "      [-e<double(.70)] [-l<int(500)>] [-s<int(100)] [-f<name>]",
+    "      <reads:db|dam> [<first:int>[-<last:int>]"
   };
 
 #define LSF_TAND "bsub -q medium -n 4 -o TANDEM.out -e TANDEM.err -R span[hosts=1] -J tandem#%d"
