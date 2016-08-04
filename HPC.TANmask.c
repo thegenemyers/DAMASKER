@@ -17,38 +17,44 @@
 #include <sys/stat.h>
 
 #include "DB.h"
-#include "tandem.h"
 
 #undef  LSF  //  define if want a directly executable LSF script
 
 static char *Usage[] =
-  { "[-v] [-k<int(12)>] [-w<int(4)>] [-h<int(35)>]",
-    "     [-e<double(.70)] [-l<int(500)>] [-s<int(100)]",
-    "     <reads:db|dam> [<first:int>[-<last:int>]"
+  { "[-vd] [-k<int(12)>] [-w<int(4)>] [-h<int(35)>] [-T<int(4)>]",
+    "      [-e<double(.70)] [-l<int(500)>] [-s<int(100)] [-f<name>]",
+    "      <reads:db|dam> [<first:int>[-<last:int>]"
   };
 
 #define LSF_TAND "bsub -q medium -n 4 -o TANDEM.out -e TANDEM.err -R span[hosts=1] -J tandem#%d"
 #define LSF_SORT "bsub -q short -n 12 -o SORT.TAN.out -e SORT.TAN.err -R span[hosts=1] -J sort#%d"
 #define LSF_MERGE \
     "bsub -q short -n 12 -o MERGE%d.REP%d.out -e MERGE%d.REP%d.err -R span[hosts=1] -J merge#%d"
+#define LSF_CHECK \
+          "bsub -q short -n 12 -o CHECK%d.DAL.out -e CHECK%d.DAL.err -R span[hosts=1] -J check#%d"
 #define LSF_MASK \
           "bsub -q short -n 12 -o MASK.TAN.out -e MASK.TAN.err -R span[hosts=1] -J masktan#%d"
 
 int main(int argc, char *argv[])
 { int   nblocks;
+  int   usepath;
   int   useblock;
   int   fblock, lblock;
 #ifdef LSF
   int   jobid;
 #endif
 
+  FILE *out;
+  char  name[100];
   char *pwd, *root;
 
 #define BUNIT  4
 
-  int    VON;
+  int    VON, DON;
   int    WINT, HINT, KINT, SINT, LINT;
+  int    NTHREADS;
   double EREL;
+  char  *ONAME;
 
   { int    i, j, k;         //  Process options
     int    flags[128];
@@ -62,13 +68,17 @@ int main(int argc, char *argv[])
     EREL  = 0.;
     LINT  = 500;
     SINT  = 100;
+    ONAME = NULL;
+    out   = stdout;
+
+    NTHREADS = 4;
 
     j = 1;
     for (i = 1; i < argc; i++)
       if (argv[i][0] == '-')
         switch (argv[i][1])
         { default:
-            ARG_FLAGS("v");
+            ARG_FLAGS("vd");
             break;
           case 'e':
             ARG_REAL(EREL)
@@ -76,6 +86,9 @@ int main(int argc, char *argv[])
               { fprintf(stderr,"%s: Average correlation must be in [.7,1.) (%g)\n",Prog_Name,EREL);
                 exit (1);
               }
+            break;
+          case 'f':
+            ONAME = argv[i]+2;
             break;
           case 'h':
             ARG_POSITIVE(HINT,"Hit threshold (in bp.s)")
@@ -92,12 +105,16 @@ int main(int argc, char *argv[])
           case 'w':
             ARG_POSITIVE(WINT,"Log of bin width")
             break;
+          case 'T':
+            ARG_POSITIVE(NTHREADS,"Number of threads")
+            break;
         }
       else
         argv[j++] = argv[i];
     argc = j;
 
     VON = flags['v'];
+    DON = flags['d'];
 
     if (argc < 2 || argc > 3)
       { fprintf(stderr,"Usage: %s %s\n",Prog_Name,Usage[0]);
@@ -105,6 +122,10 @@ int main(int argc, char *argv[])
         fprintf(stderr,"       %*s %s\n",(int) strlen(Prog_Name),"",Usage[2]);
         exit (1);
       }
+
+    for (j = 1; 2*j <= NTHREADS; j *= 2)
+      ;
+    NTHREADS = j;
   }
 
   //  Make sure DB exists and is partitioned, get number of blocks in partition
@@ -139,6 +160,8 @@ int main(int argc, char *argv[])
       { useblock = 0;
         nblocks  = 1;
       }
+
+    usepath = (strcmp(pwd,".") != 0);
   }
 
   //  Set range fblock-lblock checking that DB.<fblock-1>.las exists & DB.<fblock>.las does not
@@ -177,32 +200,69 @@ int main(int argc, char *argv[])
     if (fblock > 1)
       { file = fopen(Catenate(pwd,"/.",root,Numbered_Suffix(".",fblock-1,".tan.anno")),"r");
         if (file == NULL)
-          { fprintf(stderr,"%s: File %s/.%s.%d.tan.anno should already be present!\n",
-                           Prog_Name,pwd,root,fblock-1);
+          { if (usepath)
+              fprintf(stderr,"%s: File %s/.%s.%d.tan.anno should already be present!\n",
+                             Prog_Name,pwd,root,fblock-1);
+            else
+              fprintf(stderr,"%s: File .%s.%d.tan.anno should already be present!\n",
+                             Prog_Name,root,fblock-1);
             exit (1);
           }
         else
           fclose(file);
       }
-    file = fopen(Catenate(pwd,"/.",root,Numbered_Suffix(".",fblock,".tan.anno")),"r");
+    if (useblock)
+      file = fopen(Catenate(pwd,"/.",root,Numbered_Suffix(".",fblock,".tan.anno")),"r");
+    else
+      file = fopen(Catenate(pwd,"/.",root,".tan.anno"),"r");
     if (file != NULL)
-      { fprintf(stderr,"%s: File %s/%s.%d.tan.anno should not yet exist!\n",
-                       Prog_Name,pwd,root,fblock);
-        exit (1);
+      { if (useblock)
+          { if (usepath)
+              fprintf(stderr,"%s: File %s/.%s.%d.tan.anno should not yet exist!\n",
+                             Prog_Name,pwd,root,fblock);
+            else
+              fprintf(stderr,"%s: File .%s.%d.tan.anno should not yet exist!\n",
+                             Prog_Name,root,fblock);
+            exit (1);
+          }
+        else
+          { if (usepath)
+              fprintf(stderr,"%s: File %s/.%s.tan.anno should not yet exist!\n",Prog_Name,pwd,root);
+            else
+              fprintf(stderr,"%s: File .%s.tan.anno should not yet exist!\n",Prog_Name,root);
+            exit (1);
+          }
       }
+
+    DON = (DON && useblock);
   }
 
   { int njobs;
-    int i, j, k;
-    int usepath;
+    int i, j, k, p;
+
+    //  Create all work subdirectories if -d is set
+
+    if (DON)
+      { if (ONAME != NULL)
+          { sprintf(name,"%s.00.MKDIR",ONAME);
+            out = fopen(name,"w");
+          }
+
+        fprintf(out,"# Create work subdirectories\n");
+        for (i = fblock; i <= lblock; i++)
+          fprintf(out,"mkdir temp%d\n",i);
+      }
 
     //  Produce all necessary datandem jobs ...
 
-    usepath = (strcmp(pwd,".") != 0);
+    if (ONAME != NULL)
+      { sprintf(name,"%s.01.OVL",ONAME);
+        out = fopen(name,"w");
+      }
 
     njobs = (lblock - fblock)/BUNIT + 1;
 
-    printf("# Datander jobs (%d)\n",njobs);
+    fprintf(out,"# Datander jobs (%d)\n",njobs);
 
 #ifdef LSF
     jobid = 1;
@@ -210,47 +270,64 @@ int main(int argc, char *argv[])
     for (i = fblock; i <= lblock; i += BUNIT)
       {
 #ifdef LSF
-        printf(LSF_TAND,jobid++);
-        printf(" \"");
+        fprintf(out,LSF_TAND,jobid++);
+        fprintf(out," \"");
 #endif
-        printf("datander");
+        fprintf(out,"datander");
         if (VON)
-          printf(" -v");
+          fprintf(out," -v");
         if (KINT != 12)
-          printf(" -k%d",KINT);
+          fprintf(out," -k%d",KINT);
         if (WINT != 4)
-          printf(" -w%d",WINT);
+          fprintf(out," -w%d",WINT);
         if (HINT != 35)
-          printf(" -h%d",HINT);
+          fprintf(out," -h%d",HINT);
         if (EREL > .1)
-          printf(" -e%g",EREL);
+          fprintf(out," -e%g",EREL);
         if (LINT != 500)
-          printf(" -l%d",LINT);
+          fprintf(out," -l%d",LINT);
         if (SINT != 100)
-          printf(" -s%d",SINT);
+          fprintf(out," -s%d",SINT);
+        if (NTHREADS != 4)
+          fprintf(out," -T%d",NTHREADS);
         j = i+BUNIT;
         if (j > lblock+1)
           j = lblock+1;
         for (k = i; k < j; k++)
           if (useblock)
             if (usepath)
-              printf(" %s/%s.%d",pwd,root,k);
+              fprintf(out," %s/%s.%d",pwd,root,k);
             else
-              printf(" %s.%d",root,k);
+              fprintf(out," %s.%d",root,k);
           else
             if (usepath)
-              printf(" %s/%s",pwd,root);
+              fprintf(out," %s/%s",pwd,root);
             else
-              printf(" %s",root);
+              fprintf(out," %s",root);
+
+          if (DON)
+            for (k = i; k < j; k++)
+              { fprintf(out," && mv");
+                for (p = 0; p < NTHREADS; p++)
+                  fprintf(out," %s.%d.T%d.las",root,k,p);
+                fprintf(out," temp%d",k);
+              }
+
 #ifdef LSF
-        printf("\"");
+        fprintf(out,"\"");
 #endif
-        printf("\n");
+        fprintf(out,"\n");
       }
 
     //  ... and then all the sort & merge jobs for each block
 
-    printf("# Sort & merge jobs (%d)\n", lblock - fblock + 1);
+    if (ONAME != NULL)
+      { fclose(out);
+        sprintf(name,"%s.02.SORT",ONAME);
+        out = fopen(name,"w");
+      }
+
+    fprintf(out,"# Sort & merge jobs (%d)\n", lblock - fblock + 1);
 
 #ifdef LSF
     jobid = 1;
@@ -258,68 +335,120 @@ int main(int argc, char *argv[])
     for (i = fblock; i <= lblock; i++)
       {
 #ifdef LSF
-        printf(LSF_SORT,jobid++);
-        printf(" \"");
+        fprintf(out,LSF_SORT,jobid++);
+        fprintf(out," \"");
 #endif
-        printf("LAsort");
+        fprintf(out,"LAsort");
         if (VON)
-          printf(" -v");
+          fprintf(out," -v");
         for (k = 0; k < NTHREADS; k++)
           if (useblock)
-            printf(" %s.%d.T%d",root,i,k);
+            if (DON)
+              fprintf(out," temp%d/%s.%d.T%d",i,root,i,k);
+            else
+              fprintf(out," %s.%d.T%d",root,i,k);
           else
-            printf(" %s.T%d",root,k);
-        printf(" && LAmerge");
+            fprintf(out," %s.T%d",root,k);
+        fprintf(out," && LAmerge");
         if (VON)
-          printf(" -v");
+          fprintf(out," -v");
         if (useblock)
-          printf(" %s.T.%d",root,i);
+          if (DON)
+            fprintf(out," temp%d/%s.T.%d",i,root,i);
+          else
+            fprintf(out," %s.T.%d",root,i);
         else
-          printf(" %s.T",root);
+          fprintf(out," %s.T",root);
         for (k = 0; k < NTHREADS; k++)
           if (useblock)
-            printf(" %s.%d.T%d.S",root,i,k);
+            if (DON)
+              fprintf(out," temp%d/%s.%d.T%d.S",i,root,i,k);
+            else
+              fprintf(out," %s.%d.T%d.S",root,i,k);
           else
-            printf(" %s.T%d.S",root,k);
+            fprintf(out," %s.T%d.S",root,k);
 #ifdef LSF
-          printf("\"");
+          fprintf(out,"\"");
 #endif
-          printf("\n");
+          fprintf(out,"\n");
         }
 
     //  Check .las (option)
 
-    printf("# Check all .las files (optional but recommended)\n");
+    if (ONAME != NULL)
+      { fclose(out);
+        sprintf(name,"%s.03.CHECK.OPT",ONAME);
+        out = fopen(name,"w");
+      }
 
-    for (i = fblock; i <= lblock; i++)
-      { printf("LAcheck -vS");
+    fprintf(out,"# Check all .las files jobs (%d) (optional but recommended)\n",
+                (lblock-fblock)/(BUNIT+1)+1);
+
+#ifdef LSF
+    jobid = 1;
+#endif
+    for (i = fblock; i <= lblock; )
+      { k = i+BUNIT;
+        if (k > lblock)
+          k = lblock;
+#ifdef LSF
+        fprintf(out,LSF_CHECK,0,0,jobid++);
+        fprintf(out," \"");
+#endif
+        fprintf(out,"LAcheck -vS");
         if (usepath)
-          printf(" %s/%s",pwd,root);
+          fprintf(out," %s/%s",pwd,root);
         else
-          printf(" %s",root);
-        if (useblock)
-          printf(" %s.T.%d\n",root,i);
-        else
-          printf(" %s.T\n",root);
-        }
+          fprintf(out," %s",root);
+        while (i <= k)
+          { if (useblock)
+              if (DON)
+                fprintf(out," temp%d/%s.T.%d",i,root,i);
+              else
+                fprintf(out," %s.T.%d",root,i);
+            else
+              fprintf(out," %s.T",root);
+            i += 1;
+          }
+#ifdef LSF
+        fprintf(out,"\"");
+#endif
+        fprintf(out,"\n");
+      }
 
     //  Clean up (optional)
 
-    printf("# Cleanup all intermediate .las files (optional)\n");
+    if (ONAME != NULL)
+      { fclose(out);
+        sprintf(name,"%s.04.RM",ONAME);
+        out = fopen(name,"w");
+      }
+
+    fprintf(out,"# Cleanup all intermediate .las files\n");
 
     for (i = fblock; i <= lblock; i++)
-      { printf("rm");
+      { if (DON)
+          fprintf(out,"cd temp%d\n",i);
+        fprintf(out,"rm");
         for (k = 0; k < NTHREADS; k++)
           if (useblock)
-            printf(" %s.%d.T%d.S.las %s.%d.T%d.las",root,i,k,root,i,k);
+            fprintf(out," %s.%d.T%d.S.las %s.%d.T%d.las",root,i,k,root,i,k);
           else
-            printf(" %s.T%d.S.las %s.T%d.las",root,k,root,k);
-          printf("\n");
-        }
+            fprintf(out," %s.T%d.S.las %s.T%d.las",root,k,root,k);
+          fprintf(out,"\n");
+        if (DON)
+          fprintf(out,"cd ..\n");
+      }
 
     //  Finish with MASKtan
 
-    printf("# TANmask jobs (%d)\n",njobs);
+    if (ONAME != NULL)
+      { fclose(out);
+        sprintf(name,"%s.05.MASK",ONAME);
+        out = fopen(name,"w");
+      }
+
+    fprintf(out,"# TANmask jobs (%d)\n",njobs);
 
 #ifdef LSF
     jobid = 1;
@@ -327,48 +456,67 @@ int main(int argc, char *argv[])
     for (i = fblock; i <= lblock; i += BUNIT)
       {
 #ifdef LSF
-        printf(LSF_MASK,jobid++);
-        printf(" \"");
+        fprintf(out,LSF_MASK,jobid++);
+        fprintf(out," \"");
 #endif
-        printf("TANmask");
+        fprintf(out,"TANmask");
         if (VON)
-          printf(" -v");
+          fprintf(out," -v");
         if (LINT != 500)
-          printf(" -l%d",LINT);
+          fprintf(out," -l%d",LINT);
         if (usepath)
-          printf(" %s/%s",pwd,root);
+          fprintf(out," %s/%s",pwd,root);
         else
-          printf(" %s",root);
+          fprintf(out," %s",root);
         j = i+BUNIT;
         if (j > lblock+1)
           j = lblock+1;
         for (k = i; k < j; k++)
           if (useblock)
-            printf(" %s.T.%d",root,k);
+            if (DON)
+              fprintf(out," temp%d/%s.T.%d",k,root,k);
+            else
+              fprintf(out," %s.T.%d",root,k);
           else
-            printf(" %s.T",root);
+            fprintf(out," %s.T",root);
 #ifdef LSF
-        printf("\"");
+        fprintf(out,"\"");
 #endif
-        printf("\n");
+        fprintf(out,"\n");
       }
 
-    //  Clean up (optional)
+    //  Clean up
 
-    printf("# Cleanup all T.las files (optional)\n");
-
-    for (i = fblock; i <= lblock; i += BUNIT)
-      { printf("rm");
-        j = i+BUNIT;
-        if (j > lblock+1)
-          j = lblock+1;
-        for (k = i; k < j; k++)
-          if (useblock)
-            printf(" %s.T.%d.las",root,k);
-          else
-            printf(" %s.T.las",root);
-        printf("\n");
+    if (ONAME != NULL)
+      { fclose(out);
+        sprintf(name,"%s.06.RM",ONAME);
+        out = fopen(name,"w");
       }
+
+    if (DON)
+      fprintf(out,"# Cleanup all temp directories\n");
+    else
+      fprintf(out,"# Cleanup all T.las files\n");
+
+    if (DON)
+      for (i = fblock; i <= lblock; i++)
+        fprintf(out,"rm -r temp%d\n",i);
+    else
+      for (i = fblock; i <= lblock; i += BUNIT)
+        { fprintf(out,"rm");
+          j = i+BUNIT;
+          if (j > lblock+1)
+            j = lblock+1;
+          for (k = i; k < j; k++)
+            if (useblock)
+              fprintf(out," %s.T.%d.las",root,k);
+            else
+              fprintf(out," %s.T.las",root);
+          fprintf(out,"\n");
+        }
+
+    if (ONAME != NULL)
+      fclose(out);
   }
 
   printf("# Once all the .tan masks have been computed for every block\n");

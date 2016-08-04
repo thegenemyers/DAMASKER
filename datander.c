@@ -39,7 +39,7 @@
 #include "tandem.h"
 
 static char *Usage[] =
-  { "[-v] [-k<int(12)>] [-w<int(4)>] [-h<int(35)>]",
+  { "[-v] [-k<int(12)>] [-w<int(4)>] [-h<int(35)>] [-T<int(4)>]",
     "     [-e<double(.70)] [-l<int(500)>] [-s<int(100)>] <subject:db|dam> ...",
   };
 
@@ -82,6 +82,7 @@ int main(int argc, char *argv[])
   int    HIT_MIN;
   double AVE_ERROR;
   int    SPACING;
+  int    NTHREADS;
 
   { int    i, j, k;
     int    flags[128];
@@ -95,6 +96,8 @@ int main(int argc, char *argv[])
     AVE_ERROR = .70;
     SPACING   = 100;
     MINOVER   = 500;    //   Globally visible to filter.c
+
+    NTHREADS  = 4;
 
     j    = 1;
     for (i = 1; i < argc; i++)
@@ -130,6 +133,9 @@ int main(int argc, char *argv[])
           case 's':
             ARG_POSITIVE(SPACING,"Trace spacing")
             break;
+          case 'T':
+            ARG_POSITIVE(NTHREADS,"Number of threads")
+            break;
         }
       else
         argv[j++] = argv[i];
@@ -145,7 +151,7 @@ int main(int argc, char *argv[])
   }
 
   MINOVER *= 2;
-  if (Set_Filter_Params(KMER_LEN,BIN_SHIFT,HIT_MIN))
+  if (Set_Filter_Params(KMER_LEN,BIN_SHIFT,HIT_MIN,NTHREADS))
     { fprintf(stderr,"Illegal combination of filter parameters\n");
       exit (1);
     }

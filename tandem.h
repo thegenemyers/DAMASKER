@@ -17,10 +17,7 @@
 extern int    VERBOSE;
 extern int    MINOVER;
 
-#define NTHREADS  4    //  Must be a power of 2
-#define NSHIFT    2    //  log_2 NTHREADS
-
-int Set_Filter_Params(int kmer, int binshift, int hitmin); 
+int Set_Filter_Params(int kmer, int binshift, int hitmin, int nthreads); 
 
 void Match_Self(char *aname, HITS_DB *ablock, Align_Spec *settings);
 
