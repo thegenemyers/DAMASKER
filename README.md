@@ -4,19 +4,23 @@
 ## _Author:  Gene Myers_
 ## _First:   April 10, 2016_
 
+<p style="text-align: justify;">
 Scrubbing is complicated by the presence of repeats.  We currently handle this by soft-masking all tandem and interspersed repeats in the input data when computing overlaps.  This implies that reads that are completely repetitive sequence are not scrubbed.  This is typically a small part of the data set and a portion thereof that is currently not correctly assembled by any assembly system at the current time, and therefore the masking is of minor consequence.  Eventually, these completely masked reads will be analyzed in downstream processes that will attempt to resolve ultra-long (15Kbp or more) repeats.
+</p>
 
+<p style="text-align: justify;">
 The masking suite therefore consists of several programs that in combination can be used to produce repeat masks for a data set as follows:
+</p>
 
 ```
 1.  REPmask [-v] [-m<track(rep)>] -c<int> <subject:db> <overlaps:las> ...
 ```
 
-<p style="margin-left: 40px">
+<p style="text-align: justify; margin-left: 40px;">
 This command takes as input a database <source> and a sequence of sorted local alignments blocks, <overlaps>, produced by a daligner run for said database.  Note carefully that <source> must always refer to the entire DB, only <overlaps> can involve a block number.
 </p>
 
-<p style="margin-left: 50px">
+<p style="text-align: justify; margin-left: 50px;">
 REPmask examines each pile for an A-read and determines the intervals that are covered -c or more times by LAs.  This set of intervals is output as a repeat mask for A in an interval track with default name .rep, that can be overridden with the -m option.  If the -v option is set, then the number of intervals and total base pairs in intervals is printed.
 </p>
 
