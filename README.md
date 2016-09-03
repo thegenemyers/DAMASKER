@@ -8,14 +8,17 @@ Scrubbing is complicated by the presence of repeats.  We currently handle this b
 
 The masking suite therefore consists of several programs that in combination can be used to produce repeat masks for a data set as follows:
 
-1.
 ```
-REPmask [-v] [-m<track(rep)>] -c<int> <subject:db> <overlaps:las> ...
+1.  REPmask [-v] [-m<track(rep)>] -c<int> <subject:db> <overlaps:las> ...
 ```
 
-...This command takes as input a database <source> and a sequence of sorted local alignments blocks, <overlaps>, produced by a daligner run for said database.  Note carefully that <source> must always refer to the entire DB, only <overlaps> can involve a block number.
+<p style="margin-left: 40px">
+This command takes as input a database <source> and a sequence of sorted local alignments blocks, <overlaps>, produced by a daligner run for said database.  Note carefully that <source> must always refer to the entire DB, only <overlaps> can involve a block number.
+</p>
 
-...REPmask examines each pile for an A-read and determines the intervals that are covered -c or more times by LAs.  This set of intervals is output as a repeat mask for A in an interval track with default name .rep, that can be overridden with the -m option.  If the -v option is set, then the number of intervals and total base pairs in intervals is printed.
+<p style="margin-left: 50px">
+REPmask examines each pile for an A-read and determines the intervals that are covered -c or more times by LAs.  This set of intervals is output as a repeat mask for A in an interval track with default name .rep, that can be overridden with the -m option.  If the -v option is set, then the number of intervals and total base pairs in intervals is printed.
+</p>
 
 ```
 2. tander [-v] [-k<int(12)>] [-w<int(4)>] [-h<int(35)>] [-T<int(4)>]
