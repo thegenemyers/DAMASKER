@@ -108,14 +108,15 @@ static int *blocks(Overlap *ovls, int novl, int *ptrim)
       { ab = ovls[i].path.abpos+PEEL_BACK;
         ae = ovls[i].path.aepos-PEEL_BACK;
 
-        if (ae >= ab) 
-          { ev[ecnt].add = 1;
-            ev[ecnt].pos = ab;
-            ecnt += 1;
-            ev[ecnt].add = 0;
-            ev[ecnt].pos = ae;
-            ecnt += 1;
-          }
+        if (ae < ab) 
+          ab = ae = (ovls[i].path.abpos + ovls[i].path.aepos)/2;
+
+        ev[ecnt].add = 1;
+        ev[ecnt].pos = ab;
+        ecnt += 1;
+        ev[ecnt].add = 0;
+        ev[ecnt].pos = ae;
+        ecnt += 1;
       }
 
     qsort(ev,ecnt,sizeof(Event),EVENT_SORT);
