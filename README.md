@@ -1,8 +1,11 @@
 
-# DA MASKER: The Dazzler Repeat Masking Suite
+# Damasker: The Dazzler Repeat Masking Suite
 
 ## _Author:  Gene Myers_
 ## _First:   April 10, 2016_
+
+For typeset documentation, examples of use, and design philosophy please go to
+my [blog](https://dazzlerblog.wordpress.com/command-guides/damasker-commands).
 
 Scrubbing is complicated by the presence of repeats.  We currently handle this by soft-masking all tandem and interspersed repeats in the input data when computing overlaps.  This implies that reads that are completely repetitive sequence are not scrubbed.  This is typically a small part of the data set and a portion thereof that is currently not correctly assembled by any assembly system at the current time, and therefore the masking is of minor consequence.  Eventually, these completely masked reads will be analyzed in downstream processes that will attempt to resolve ultra-long (15Kbp or more) repeats.
 
