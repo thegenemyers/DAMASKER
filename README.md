@@ -8,14 +8,17 @@ Scrubbing is complicated by the presence of repeats.  We currently handle this b
 
 The masking suite therefore consists of several programs that in combination can be used to produce repeat masks for a data set as follows:
 
-1. ```REPmask [-v] [-m<track(rep)>] -c<int> <subject:db> <overlaps:las> ...
+1.
+```
+REPmask [-v] [-m<track(rep)>] -c<int> <subject:db> <overlaps:las> ...
 ```
 
 ...This command takes as input a database <source> and a sequence of sorted local alignments blocks, <overlaps>, produced by a daligner run for said database.  Note carefully that <source> must always refer to the entire DB, only <overlaps> can involve a block number.
 
 ...REPmask examines each pile for an A-read and determines the intervals that are covered -c or more times by LAs.  This set of intervals is output as a repeat mask for A in an interval track with default name .rep, that can be overridden with the -m option.  If the -v option is set, then the number of intervals and total base pairs in intervals is printed.
 
-2. ```tander [-v] [-k<int(12)>] [-w<int(4)>] [-h<int(35)>] [-T<int(4)>]
+```
+2. tander [-v] [-k<int(12)>] [-w<int(4)>] [-h<int(35)>] [-T<int(4)>]
                [-e<double(.70)] [-l<int(1000)] [-s<int(100)]
                <path:db|dam> ...
 ```
@@ -24,14 +27,16 @@ The masking suite therefore consists of several programs that in combination can
 
 ...For each subject block, say X, this program produces just 4NTHREAD files X.T#.las where -T is the number of threads (by default 4) and where all the alignments do not involve complementing the B-read (which is also the A-read).  These should then be sorted and merged with LAsort and LAmerge as for example performed by the script generator HPC.TANmask described below.
 
-3. ```TANmask [-v] [-l<int(500)>] [-m<track(tan)>] <subject:db> <overlaps:las> ...
+```
+3. TANmask [-v] [-l<int(500)>] [-m<track(tan)>] <subject:db> <overlaps:las> ...
 ```
 
 ...This command takes as input a database <source> and a sequence of sorted local alignments blocks, <overlaps>, produced by a datander run for said database.  Note carefully that <source> must always refer to the entire DB, only <overlaps> can involve a block number.
 
 ...TANmask examines each pile for an A-read and finds those self-LAs whose two alignment intervals overlap and for which the union of these two intervals is -l bases or longer.  Each of these regions signals a tandem element in A of length -l or greater, and a disjoint list of these is built.  This set of intervals is output as a tandem mask for A in an interval track with default name .tan, that can be overridden with the -m option.  If the -v option is set, then the number of intervals and total base pairs in intervals is printed.
 
-4. ```HPC.REPmask [-vbd]
+```
+4. HPC.REPmask [-vbd]
                [-t<int>] [-w<int(6)>] [-l<int(1000)>] [-s<int(100)>]
                [-M<int>] [-B<int(4)>] [-D<int( 250)>] [-T<int(4)>] [-f<name>] 
                [-k<int(14)>] [-h<int(35)>] [-e<double(.70)>] [-m<track>]+
@@ -64,7 +69,8 @@ The data base must have been previously split by DBsplit and all options, except
 
 ...The -d option requests scripts that organize files into a collection of sub-directories so as not to overwhelm the underlying OS for large genomes.  For a DB divided into N blocks and the daligner calls in the script will produce 2gNT .las-files where T is the number of threads specified by the -T option passed to daligner (default is 4).  With the -d option set, N sub-directories (with respect to the directory HPC.daligner is called in) of the form "temp<i>" for i from 1 to N are created in an initial command block, and then all intermediate files are placed in those sub-directories, with a maximum of g(2T+1) files appearing in any sub-directory at any given point in the process.
 
-5. ```HPC.TANmask [-vd] [-k<int(12)>] [-w<int(4)>] [-h<int(35)>] [-T<int(4)>]
+```
+5. HPC.TANmask [-vd] [-k<int(12)>] [-w<int(4)>] [-h<int(35)>] [-T<int(4)>]
                      [-e<double(.70)] [-l<int(1000)] [-s<int(100)] [-f<name>]
                      <reads:db|dam> [<first:int>[-<last:int>]]
 ```
