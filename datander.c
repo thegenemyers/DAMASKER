@@ -69,6 +69,22 @@ static int read_DB(HITS_DB *block, char *name, int kmer)
   return (isdam);
 }
 
+static char *CommandBuffer(char *bname)
+{ static char *cat = NULL;
+  static int   max = -1;
+  int len;
+
+  len = 2*strlen(bname) + 200;
+  if (len > max)
+    { max = ((int) (1.2*len)) + 100;
+      if ((cat = (char *) realloc(cat,max+1)) == NULL)
+        { fprintf(stderr,"%s: Out of memory (Making path name)\n",Prog_Name);
+          exit (1);
+        }
+    }
+  return (cat);
+}
+
 int main(int argc, char *argv[])
 { HITS_DB    _bblock;
   HITS_DB    *bblock = &_bblock;
@@ -76,6 +92,7 @@ int main(int argc, char *argv[])
   char       *broot;
   Align_Spec *settings;
   int         isdam;
+  char       *command;
 
   int    KMER_LEN;
   int    BIN_SHIFT;
@@ -175,6 +192,21 @@ int main(int argc, char *argv[])
 
         Free_Align_Spec(settings);
         Close_DB(bblock);
+
+        command = CommandBuffer(broot);
+
+        sprintf(command,"LAsort /tmp/%s.T*.las",broot);
+        if (VERBOSE)
+          printf("\n%s\n",command);
+        system(command);
+        sprintf(command,"LAmerge TAN.%s.las /tmp/%s.T*.S.las",broot,broot);
+        if (VERBOSE)
+          printf("%s\n",command);
+        system(command);
+        sprintf(command,"rm /tmp/%s.T*.las",broot);
+        if (VERBOSE)
+          printf("%s\n",command);
+        system(command);
       }
   }
 

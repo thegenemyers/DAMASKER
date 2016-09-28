@@ -31,4 +31,4 @@ install:
 
 package:
 	make clean
-	tar -zcf damasker.tar.gz README Makefile *.h *.c
+	tar -zcf damasker.tar.gz README.md Makefile *.h *.c
