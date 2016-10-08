@@ -410,9 +410,9 @@ int main(int argc, char *argv[])
 
             if (SPAN == 1)   // ==> [low,hgh) = [i,i+1)
               if (useblock)
-                fprintf(out," && mv %s.%d.%s.%d.las %s.R1.%d",root,i,root,i,root,i);
+                fprintf(out," && mv %s.%d.%s.%d.las %s.R1.%d.las",root,i,root,i,root,i);
               else
-                fprintf(out," && mv %s.%s.las %s.R1.%d",root,root,root,i);
+                fprintf(out," && mv %s.%s.las %s.R1.%d.las",root,root,root,i);
             else if (DON)
               { fprintf(out," && mv");
                 for (k = low; k < hgh; k++)
