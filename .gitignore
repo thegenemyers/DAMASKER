@@ -1,7 +1,7 @@
 /datander
 /TANmask
 /REPmask
-/HPC.TANmake
+/HPC.TANmask
 /HPC.REPmask
 *.o
 *.d
