@@ -1265,7 +1265,7 @@ void Match_Self(char *aname, HITS_DB *ablock, Align_Spec *aspec)
 
     parmr[0].beg = 0;
     for (i = 1; i < NTHREADS; i++)
-      { p = (alen * i) >> NSHIFT;
+      { p = (int) ((((int64) alen) * i) >> NSHIFT);
         if (p > 0)
           { ar = asort[p-1].read;
             while ((asort[p].read) == ar)
