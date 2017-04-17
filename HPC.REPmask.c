@@ -632,7 +632,30 @@ int main(int argc, char *argv[])
 
                   base = fblock + ((j-fblock)/SPAN)*SPAN;
                   if (base + SPAN > lblock+1)
-                    base = (lblock+1) - SPAN;
+                    { int n, u;
+                      int mnt, mits;
+
+                      n = (lblock+1) - SPAN;
+                      u = j - (base-n);
+                      if (i == 1 && u < base)
+                        { mnt  = (lblock+1)-base;
+                          mits = (mnt-1)/DUNIT+1;
+                          low  = 1;
+                          base -= 1;
+                          for (p = 1; p <= mits; p++)
+                            { hgh = (mnt*p)/mits;
+                              fprintf(out,"rm");
+                              for (k = low; k <= hgh; k++)
+                                if (DON)
+                                  fprintf(out," temp%d/%s.%d.%s.%d.las",u,root,u,root,base+k);
+                                else
+                                  fprintf(out," %s.%d.%s.%d.las",root,u,root,base+k);
+                              fprintf(out,"\n");
+                              low = hgh+1;
+                            }
+                        }
+                      base = n;
+                    }
                   base -= 1;
 
                   low = 1;
@@ -642,9 +665,9 @@ int main(int argc, char *argv[])
                       for (k = low; k <= hgh; k++)
                         if (i == 1)
                           if (DON)
-                            fprintf(out," temp%d/%s.%d.%s.%d",j,root,j,root,base+k);
+                            fprintf(out," temp%d/%s.%d.%s.%d.las",j,root,j,root,base+k);
                           else
-                            fprintf(out," %s.%d.%s.%d",root,j,root,base+k);
+                            fprintf(out," %s.%d.%s.%d.las",root,j,root,base+k);
                         else
                           if (DON)
                             fprintf(out," temp%d/L%d.%d.%d.las",j,i,j,k);
