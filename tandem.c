@@ -1018,7 +1018,7 @@ static void *report_thread(void *arg)
                         }
                       amatch[novla] = *apath;
                       amatch[novla].trace = (void *) (tbuf->top);
-                      memcpy(tbuf->trace+tbuf->top,apath->trace,sizeof(short)*apath->tlen);
+                      memmove(tbuf->trace+tbuf->top,apath->trace,sizeof(short)*apath->tlen);
                       novla += 1;
                       tbuf->top += apath->tlen;
 
