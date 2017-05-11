@@ -459,6 +459,7 @@ static KmerPos *Sort_Kmers(HITS_DB *block, int *len, KmerPos **buffer)
     rez[kmers].code = 0;
   else
     rez[kmers].code = 0xffffffffffffffffllu;
+  rez[kmers].read = nreads;
  
   if (src != rez)
     *buffer = src; 
@@ -921,7 +922,7 @@ static void *report_thread(void *arg)
 
   aoff = asort + (data->beg - Kmer);
   aend = asort[data->end-1].read;
-  for (ar = asort[data->beg].read; ar < aend; ar++)
+  for (ar = asort[data->beg].read; ar <= aend; ar++)
     { int alen, amarkb, amarke;
       int apos, diag;
       int setaln;
@@ -1263,6 +1264,7 @@ void Match_Self(char *aname, HITS_DB *ablock, Align_Spec *aspec)
     MR_spec   = aspec;
     MR_tspace = Trace_Spacing(aspec);
 
+    asort[alen].read = ablock->nreads;
     parmr[0].beg = 0;
     for (i = 1; i < NTHREADS; i++)
       { p = (int) ((((int64) alen) * i) >> NSHIFT);
