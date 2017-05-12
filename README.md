@@ -27,7 +27,7 @@ This command takes as input a database \<source\> and a sequence of sorted local
 REPmask examines each pile for an A-read and determines the intervals that are covered -c or more times by LAs.  This set of intervals is output as a repeat mask for A in an interval track with default name .rep, that can be overridden with the -m option.  If the -v option is set, then the number of intervals and total base pairs in intervals is printed.
 
 ```
-2. tander [-v] [-k<int(12)>] [-w<int(4)>] [-h<int(35)>] [-T<int(4)>]
+2. datander [-v] [-k<int(12)>] [-w<int(4)>] [-h<int(35)>] [-T<int(4)>]
                [-e<double(.70)] [-l<int(1000)] [-s<int(100)]
                <path:db|dam> ...
 ```
