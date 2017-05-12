@@ -28,8 +28,8 @@ REPmask examines each pile for an A-read and determines the intervals that are c
 
 ```
 2. datander [-v] [-k<int(12)>] [-w<int(4)>] [-h<int(35)>] [-T<int(4)>]
-               [-e<double(.70)] [-l<int(1000)] [-s<int(100)]
-               <path:db|dam> ...
+                 [-e<double(.70)] [-l<int(1000)] [-s<int(100)]
+                 <path:db|dam> ...
 ```
 
 This program is a variation of daligner tailored to the task of comparing each read against itself (and only those comparisons).   As such each block or DB serves as both the source and target, and the -b, -A, -I, -t, -M, -H, and -m options are irrelevant.  The remaining options are exactly as for daligner (see here).  For each subject block, say X, this program produces a single file TAN.X.las where all the alignments do not involve complementing the B-read (which is also the A-read).
