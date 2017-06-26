@@ -97,7 +97,7 @@ static void TANDEM(int aread, Overlap *ovls, int novl)
 
   { int   i;
     Path *ipath;
- 
+
     evnum = 0;
     for (i = 0; i < novl; i++)
       { ipath = &(ovls[i].path);
@@ -188,7 +188,12 @@ static int make_a_pass(FILE *input, void (*ACTION)(int, Overlap *, int), int tra
   else
     TBYTES = sizeof(uint16);
 
-  Read_Overlap(input,ovls);
+  int rv = Read_Overlap(input,ovls);
+  if (rv)
+    {
+      return 0;
+    }
+
   if (trace)
     { if (ovls[0].path.tlen > pmax)
         { pmax  = 1.2*(ovls[0].path.tlen)+10000;
