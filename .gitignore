@@ -1,0 +1,7 @@
+/datander
+/TANmask
+/REPmask
+/HPC.TANmask
+/HPC.REPmask
+*.o
+*.d
