@@ -28,7 +28,7 @@ REPmask examines each pile for an A-read and determines the intervals that are c
 
 ```
 2. datander [-v] [-k<int(12)>] [-w<int(4)>] [-h<int(35)>] [-T<int(4)>]
-                 [-e<double(.70)] [-l<int(1000)] [-s<int(100)]
+                 [-e<double(.70)>] [-l<int(1000)>] [-s<int(100)>] [-P<dir(/tmp)>]
                  <path:db|dam> ...
 ```
 
@@ -44,7 +44,7 @@ TANmask examines each pile for an A-read and finds those self-LAs whose two alig
 
 ```
 4. HPC.REPmask [-vbd]
-               [-t<int>] [-w<int(6)>] [-l<int(1000)>] [-s<int(100)>]
+               [-t<int>] [-w<int(6)>] [-l<int(1000)>] [-s<int(100)>] [-P<dir(/tmp)>]
                [-M<int>] [-B<int(4)>] [-D<int( 250)>] [-T<int(4)>] [-f<name>] 
                [-k<int(14)>] [-h<int(35)>] [-e<double(.70)>] [-m<track>]+
                -g<int> -c<int> <reads:db|dam> [<first:int>[-<last:int>]]
@@ -75,8 +75,8 @@ The number of command blocks varies as it depends on the number of merging round
 The -d option requests scripts that organize files into a collection of sub-directories so as not to overwhelm the underlying OS for large genomes.  For a DB divided into N blocks and the daligner calls in the script will produce 2gNT .las-files where T is the number of threads specified by the -T option passed to daligner (default is 4).  With the -d option set, N sub-directories (with respect to the directory HPC.daligner is called in) of the form "temp\<i\>" for i from 1 to N are created in an initial command block, and then all intermediate files are placed in those sub-directories, with a maximum of g(2T+1) files appearing in any sub-directory at any given point in the process.
 
 ```
-5. HPC.TANmask [-v] [-k<int(12)>] [-w<int(4)>] [-h<int(35)>] [-T<int(4)>]
-                    [-e<double(.70)] [-l<int(1000)] [-s<int(100)] [-f<name>]
+5. HPC.TANmask [-v] [-k<int(12)>] [-w<int(4)>] [-h<int(35)>] [-T<int(4)>] [-P<dir(/tmp)>]
+                    [-e<double(.70)>] [-l<int(1000)>] [-s<int(100)>] [-f<name>]
                     <reads:db|dam> [<first:int>[-<last:int>]]
 ```
 
