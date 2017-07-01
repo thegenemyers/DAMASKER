@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <dirent.h>
 
 #include <sys/param.h>
 #if defined(BSD)
@@ -39,11 +40,12 @@
 #include "tandem.h"
 
 static char *Usage[] =
-  { "[-v] [-k<int(12)>] [-w<int(4)>] [-h<int(35)>] [-T<int(4)>]",
+  { "[-v] [-k<int(12)>] [-w<int(4)>] [-h<int(35)>] [-T<int(4)>] [-P<dir(/tmp)>]",
     "     [-e<double(.70)] [-l<int(500)>] [-s<int(100)>] <subject:db|dam> ...",
   };
 
-int     VERBOSE;   //   Globally visible to filter.c
+int     VERBOSE;   //   Globally visible to tandem.c
+char   *SORT_PATH;
 int     MINOVER;
 
 static int read_DB(HITS_DB *block, char *name, int kmer)
@@ -104,6 +106,7 @@ int main(int argc, char *argv[])
   { int    i, j, k;
     int    flags[128];
     char  *eptr;
+    DIR   *dirp;
 
     ARG_INIT("datander")
 
@@ -113,8 +116,8 @@ int main(int argc, char *argv[])
     AVE_ERROR = .70;
     SPACING   = 100;
     MINOVER   = 500;    //   Globally visible to filter.c
-
     NTHREADS  = 4;
+    SORT_PATH = "/tmp";
 
     j    = 1;
     for (i = 1; i < argc; i++)
@@ -149,6 +152,14 @@ int main(int argc, char *argv[])
             break;
           case 's':
             ARG_POSITIVE(SPACING,"Trace spacing")
+            break;
+          case 'P':
+            SORT_PATH = argv[i]+2;
+            if ((dirp = opendir(SORT_PATH)) == NULL)
+              { fprintf(stderr,"%s: -P option: cannot open directory %s\n",Prog_Name,SORT_PATH);
+                exit (1);
+              }
+            closedir(dirp);
             break;
           case 'T':
             ARG_POSITIVE(NTHREADS,"Number of threads")
@@ -195,15 +206,15 @@ int main(int argc, char *argv[])
 
         command = CommandBuffer(broot);
 
-        sprintf(command,"LAsort /tmp/%s.T*.las",broot);
+        sprintf(command,"LAsort %s/%s.T*.las",SORT_PATH,broot);
         if (VERBOSE)
           printf("\n%s\n",command);
         system(command);
-        sprintf(command,"LAmerge TAN.%s.las /tmp/%s.T*.S.las",broot,broot);
+        sprintf(command,"LAmerge TAN.%s.las %s/%s.T*.S.las",SORT_PATH,broot,broot);
         if (VERBOSE)
           printf("%s\n",command);
         system(command);
-        sprintf(command,"rm /tmp/%s.T*.las",broot);
+        sprintf(command,"rm %s/%s.T*.las",SORT_PATH,broot);
         if (VERBOSE)
           printf("%s\n",command);
         system(command);

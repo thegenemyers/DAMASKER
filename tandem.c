@@ -1294,7 +1294,7 @@ void Match_Self(char *aname, HITS_DB *ablock, Align_Spec *aspec)
         parmr[i].work  = New_Work_Data();
 
         parmr[i].ofile =
-             Fopen(Catenate("/tmp/","",aname,Numbered_Suffix(".T",i+1,".las")),"w");
+             Fopen(Catenate(SORT_PATH,"/",aname,Numbered_Suffix(".T",i+1,".las")),"w");
         if (parmr[i].ofile == NULL)
           exit (1);
       }
@@ -1335,7 +1335,7 @@ zerowork:
 
     nfilt  = 0;
     for (i = 0; i < NTHREADS; i++)
-      { ofile = Fopen(Catenate("/tmp/","",aname,Numbered_Suffix(".T",i+1,".las")),"w");
+      { ofile = Fopen(Catenate(SORT_PATH,"/",aname,Numbered_Suffix(".T",i+1,".las")),"w");
         fwrite(&nfilt,sizeof(int64),1,ofile);
         fwrite(&MR_tspace,sizeof(int),1,ofile);
         fclose(ofile);

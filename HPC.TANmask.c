@@ -21,7 +21,7 @@
 #undef  LSF  //  define if want a directly executable LSF script
 
 static char *Usage[] =
-  { "[-v] [-k<int(12)>] [-w<int(4)>] [-h<int(35)>] [-T<int(4)>]",
+  { "[-v] [-k<int(12)>] [-w<int(4)>] [-h<int(35)>] [-T<int(4)>] [-P<dir(/tmp)>]",
     "     [-e<double(.70)] [-l<int(500)>] [-s<int(100)] [-f<name>]",
     "     <reads:db|dam> [<first:int>[-<last:int>]"
   };
@@ -52,6 +52,7 @@ int main(int argc, char *argv[])
   int    NTHREADS;
   double EREL;
   char  *ONAME;
+  char  *PDIR;
 
   { int    i, j, k;         //  Process options
     int    flags[128];
@@ -66,6 +67,7 @@ int main(int argc, char *argv[])
     LINT  = 500;
     SINT  = 100;
     ONAME = NULL;
+    PDIR  = NULL;
     out   = stdout;
 
     NTHREADS = 4;
@@ -92,6 +94,10 @@ int main(int argc, char *argv[])
             break;
           case 'k':
             ARG_POSITIVE(KINT,"K-mer length")
+            if (KINT > 32)
+              { fprintf(stderr,"%s: K-mer length must be 32 or less\n",Prog_Name);
+                exit (1);
+              }
             break;
           case 'l':
             ARG_POSITIVE(LINT,"Minimum ovlerap length")
@@ -101,6 +107,9 @@ int main(int argc, char *argv[])
             break;
           case 'w':
             ARG_POSITIVE(WINT,"Log of bin width")
+            break;
+          case 'P':
+            PDIR = argv[i]+2;
             break;
           case 'T':
             ARG_POSITIVE(NTHREADS,"Number of threads")
@@ -269,6 +278,8 @@ int main(int argc, char *argv[])
           fprintf(out," -l%d",LINT);
         if (SINT != 100)
           fprintf(out," -s%d",SINT);
+        if (PDIR != NULL)
+          fprintf(out," -P%s",PDIR);
         if (NTHREADS != 4)
           fprintf(out," -T%d",NTHREADS);
         j = i+BUNIT;

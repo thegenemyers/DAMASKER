@@ -16,6 +16,7 @@
 
 extern int    VERBOSE;
 extern int    MINOVER;
+extern char  *SORT_PATH;
 
 int Set_Filter_Params(int kmer, int binshift, int hitmin, int nthreads); 
 

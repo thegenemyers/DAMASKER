@@ -21,7 +21,7 @@
 #undef  LSF  //  define if want a directly executable LSF script
 
 static char *Usage[] =
-  { "[-vbd] [-t<int>] [-w<int(6)>] [-l<int(1000)>] [-s<int(100)>]",
+  { "[-vbd] [-t<int>] [-w<int(6)>] [-l<int(1000)>] [-s<int(100)>] [-P<dir(/tmp)>]", 
     "       [-M<int>] [-B<int(4)>] [-D<int( 250)>] [T<int(4)>] [-f<name>]",
     "       [-k<int(14)>] [-h<int(35)>] [-e<double(.70)>] [-m<track>]+",
     "       -g<int> -c<int> <reads:db|dam> [<block:int>[-<range:int>]"
@@ -59,6 +59,7 @@ int main(int argc, char *argv[])
   int    MMAX, MTOP;
   char **MASK;
   char  *ONAME;
+  char  *PDIR;
 
   { int    i, j, k;         //  Process options
     int    flags[128];
@@ -76,6 +77,7 @@ int main(int argc, char *argv[])
     LINT  = 1000;
     SINT  = 100;
     MINT  = -1;
+    PDIR  = NULL;
 
     MTOP = 0;
     MMAX = 10;
@@ -118,6 +120,10 @@ int main(int argc, char *argv[])
             break;
           case 'k':
             ARG_POSITIVE(KINT,"K-mer length")
+            if (KINT > 32)
+              { fprintf(stderr,"%s: K-mer length must be 32 or less\n",Prog_Name);
+                exit (1);
+              }
             break;
           case 'l':
             ARG_POSITIVE(LINT,"Minimum ovlerap length")
@@ -153,6 +159,9 @@ int main(int argc, char *argv[])
             break;
           case 'M':
             ARG_NON_NEGATIVE(MINT,"Memory allocation (in Gb)")
+            break;
+          case 'P':
+            PDIR = argv[i]+2;
             break;
           case 'T':
             ARG_POSITIVE(NTHREADS,"Number of threads")
@@ -381,6 +390,8 @@ int main(int argc, char *argv[])
               fprintf(out," -s%d",SINT);
             if (MINT >= 0)
               fprintf(out," -M%d",MINT);
+            if (PDIR != NULL)
+              fprintf(out," -P%s",PDIR);
             if (NTHREADS != 4)
               fprintf(out," -T%d",NTHREADS);
             for (k = 0; k < MTOP; k++)
