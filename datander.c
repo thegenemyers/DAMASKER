@@ -48,7 +48,7 @@ int     VERBOSE;   //   Globally visible to tandem.c
 char   *SORT_PATH;
 int     MINOVER;
 
-static int read_DB(HITS_DB *block, char *name, int kmer)
+static int read_DB(DAZZ_DB *block, char *name, int kmer)
 { int i, isdam;
 
   isdam = Open_DB(name,block);
@@ -88,8 +88,8 @@ static char *CommandBuffer(char *bname)
 }
 
 int main(int argc, char *argv[])
-{ HITS_DB    _bblock;
-  HITS_DB    *bblock = &_bblock;
+{ DAZZ_DB    _bblock;
+  DAZZ_DB    *bblock = &_bblock;
   char       *bfile;
   char       *broot;
   Align_Spec *settings;
@@ -197,7 +197,7 @@ int main(int argc, char *argv[])
         else
           broot = Root(bfile,".db");
 
-        settings = New_Align_Spec( AVE_ERROR, SPACING, bblock->freq);
+        settings = New_Align_Spec( AVE_ERROR, SPACING, bblock->freq, 0);
 
         Match_Self(broot,bblock,settings);
 

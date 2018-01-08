@@ -347,7 +347,7 @@ static Double *lex_sort(int bytes[16], Double *src, Double *trg, Lex_Arg *parmx)
  *
  ********************************************************************************************/
 
-static HITS_DB    *TA_block;
+static DAZZ_DB    *TA_block;
 static KmerPos    *TA_list;
 
 typedef struct
@@ -388,7 +388,7 @@ static void *tuple_thread(void *arg)
   return (NULL);
 }
 
-static KmerPos *Sort_Kmers(HITS_DB *block, int *len, KmerPos **buffer)
+static KmerPos *Sort_Kmers(DAZZ_DB *block, int *len, KmerPos **buffer)
 { THREAD    threads[NTHREADS];
   Tuple_Arg parmt[NTHREADS];
   Lex_Arg   parmx[NTHREADS];
@@ -554,7 +554,7 @@ static void *count_thread(void *arg)
   //  Report threads: using the linked lists of consereved K-mers find likely seeds and then check
   //    for alignments as per "daligner".
 
-static HITS_DB    *MR_ablock;
+static DAZZ_DB    *MR_ablock;
 static Align_Spec *MR_spec;
 static int         MR_tspace;
 
@@ -857,7 +857,7 @@ typedef struct
 static void *report_thread(void *arg)
 { Report_Arg  *data   = (Report_Arg *) arg;
 
-  HITS_READ   *aread  = MR_ablock->reads;
+  DAZZ_READ   *aread  = MR_ablock->reads;
   KmerPos     *asort  = MG_alist;
 
   int         *score  = data->score;
@@ -1130,7 +1130,7 @@ static void *report_thread(void *arg)
  *
  ********************************************************************************************/
 
-void Match_Self(char *aname, HITS_DB *ablock, Align_Spec *aspec)
+void Match_Self(char *aname, DAZZ_DB *ablock, Align_Spec *aspec)
 { THREAD     threads[NTHREADS];
   Merge_Arg  parmm[NTHREADS];
   Lex_Arg    parmx[NTHREADS];

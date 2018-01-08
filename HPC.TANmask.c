@@ -152,12 +152,12 @@ int main(int argc, char *argv[])
       }
 
     if (fscanf(dbvis,"files = %d\n",&nfiles) != 1)
-      SYSTEM_ERROR
+      SYSTEM_READ_ERROR
     for (i = 0; i < nfiles; i++)
       { char buffer[30001];
 
         if (fgets(buffer,30000,dbvis) == NULL)
-          SYSTEM_ERROR
+          SYSTEM_READ_ERROR
       }
 
     useblock = 1;

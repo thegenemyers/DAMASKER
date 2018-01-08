@@ -20,6 +20,6 @@ extern char  *SORT_PATH;
 
 int Set_Filter_Params(int kmer, int binshift, int hitmin, int nthreads); 
 
-void Match_Self(char *aname, HITS_DB *ablock, Align_Spec *settings);
+void Match_Self(char *aname, DAZZ_DB *ablock, Align_Spec *settings);
 
 #endif
