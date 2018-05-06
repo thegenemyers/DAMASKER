@@ -8,10 +8,10 @@ For typeset documentation, examples of use, and design philosophy please go to
 my [blog](https://dazzlerblog.wordpress.com/command-guides/damasker-commands).
 
 All programs add suffixes (e.g. .db, .las) as needed.
-For the commands that take multiple .las files as arguments, i.e. LAsort, LAmerge, LAindex, LAcat,
-and LAcheck, one can place a @-sign in the name, which is then interpreted as the sequence of files
-obtained by replacing the @-sign by 1, 2, 3, ... in sequence until a number is reached for
-which no file matches.  One can also place a @-sign followed by an integer, say, i, in which
+For the commands that take multiple .las files as arguments, i.e. REPmask
+and TANmask, one can place a @-sign in the name, which is then interpreted as the sequence of files
+obtained by replacing the @-sign by 1, 2, 3, ... in sequence until a number is reached for which
+no file exists with that name.  One can also place a @-sign followed by an integer, say, i, in which
 case the sequence starts at i.  Lastly, one can also place @i-j where i and j are integers, in
 which case the sequence is from i to j, inclusive.
 
@@ -82,13 +82,12 @@ If the -f option is set, then each command block is written to a file with a nam
   JOBS.01.OVL
   JOBS.02.CHECK.OPT
   JOBS.03.MERGE
-  JOBS.04.CHECK.OPT
-  JOBS.05.RM
-  JOBS.06.MASK
-  JOBS.07.RM
+  JOBS.04.RM
+  JOBS.05.MASK
+  JOBS.06.RM
 ```
 
-The number of command blocks varies as it depends on the number of merging rounds required in the external sort of the .las files.  The files with the suffix .OPT are optional and need not be executed albeit we highly recommend that one run all the CHECK blocks.
+The number of command blocks varies as it depends on the number of merging rounds required in the external sort of the .las files.  The files with the suffix .OPT are optional and need not be executed albeit we highly recommend that one run the CHECK block.
 
 The -d option requests scripts that organize files into a collection of sub-directories so as not to overwhelm the underlying OS for large genomes.  For a DB divided into N blocks and the daligner calls in the script will produce 2gNT .las-files where T is the number of threads specified by the -T option passed to daligner (default is 4).  With the -d option set, N sub-directories (with respect to the directory HPC.daligner is called in) of the form "temp\<i\>" for i from 1 to N are created in an initial command block, and then all intermediate files are placed in those sub-directories, with a maximum of g(2T+1) files appearing in any sub-directory at any given point in the process.
 
@@ -100,4 +99,4 @@ The -d option requests scripts that organize files into a collection of sub-dire
 
 HPC.TANmask writes a UNIX shell script to the standard output that runs datander on all relevant blocks of the supplied DB, then sorts and merges the resulting alignments into a single .las for each block, and finally calls TANmask on each LA block to produce a tandem mask with name \<-n\> for each block that can be merge into a single track for the entire DB with Catrack.
 
-All option arguments are passed through to datander and/or TANmask except for the -f option which serves the same role as for HPC.REPmask above (note carefully that -l is passed to both programs).  The -v option is passed to all programs in the script.  If the integers \<first\> and \<last\> are missing then the script produced is for every block in the database \<reads\>. If \<first\> is present then HPC.TANmask produces a script that produces .tan tracks for blocks \<first\> through \<last\> (\<last\> = \<first\> if not present).
+All option arguments are passed through to datander or TANmask except for -l which is passed to both, and except for the -f option which serves the same role as for HPC.REPmask above.  The -v option is passed to all programs in the script.  If the integers \<first\> and \<last\> are missing then the script produced is for every block in the database \<reads\>. If \<first\> is present then HPC.TANmask produces a script that produces .tan tracks for blocks \<first\> through \<last\> (\<last\> = \<first\> if not present).
