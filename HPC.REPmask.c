@@ -18,43 +18,65 @@
 
 #include "DB.h"
 
-#undef  LSF  //  define if want a directly executable LSF script
+#undef  LSF    //  define if want a directly executable LSF script
+#undef  SLURM  //  define if want a directly executable SLURM script
 
 static char *Usage[] =
-  { "[-vbd] [-t<int>] [-w<int(6)>] [-l<int(1000)>] [-s<int(100)>] [-P<dir(/tmp)>]", 
-    "       [-M<int>] [-B<int(4)>] [-D<int( 250)>] [T<int(4)>] [-f<name>]",
+  { "[-vbd] [-t<int>] [-w<int(6)>] [-l<int(1000)>] [-s<int(100)>] [-M<int>]",
+    "       [-n<name(rep-g)>] [-P<dir(/tmp)>] [-B<int(4)>] [T<int(4)>] [-f<name>]",
     "       [-k<int(14)>] [-h<int(35)>] [-e<double(.70)>] [-m<track>]+",
     "       -g<int> -c<int> <reads:db|dam> [<block:int>[-<range:int>]"
   };
 
-#define LSF_ALIGN \
-            "bsub -q medium -n 4 -o DAL.REP%d.out -e DAL.REP%d.err -R span[hosts=1] -J align#%d"
-#define LSF_MERGE \
-    "bsub -q short -n 12 -o MERGE%d.REP%d.out -e MERGE%d.REP%d.err -R span[hosts=1] -J merge#%d"
-#define LSF_CHECK \
-          "bsub -q short -n 12 -o CHECK%d.DAL.out -e CHECK%d.DAL.err -R span[hosts=1] -J check#%d"
-#define LSF_MASK \
+#ifdef LSF
+
+#define HPC
+
+#define HPC_ALIGN \
+    "bsub -q medium -n %d -o DAL.REP%d.out -e DAL.REP%d.err -R span[hosts=1] -J ralign#%d"
+#define HPC_MERGE \
+    "bsub -q short -n 12 -o MERGE.REP%d.out -e MERGE.REP%d.err -R span[hosts=1] -J rmerge#%d"
+#define HPC_CHECK \
+    "bsub -q short -n 12 -o CHECK.REP%d.out -e CHECK.REP%d.err -R span[hosts=1] -J rcheck#%d"
+#define HPC_MASK \
     "bsub -q short -n 12 -o MASK.REP%d.out -e MASK.REP%d.err -R span[hosts=1] -J maskrep#%d"
+
+#endif
+
+#ifdef SLURM
+
+#define HPC
+
+#define HPC_ALIGN \
+    "srun -p batch -n 1 -c %d --mem_per_cpu=%d -o DAL.REP%d.out -e DAL.REP%d.err -J ralign#%d"
+#define HPC_MERGE \
+    "srun -p batch -n 1 -c 12 -t 00:05:00 -o MERGE.REP%d.DAL.out -e MERGE.REP%d.err -J rmerge#%d"
+#define HPC_CHECK \
+    "srun -p batch -n 1 -c 12 -t 00:05:00 -o CHECK.REP%d.out -e CHECK.REP%d.err -J rcheck#%d"
+#define HPC_MASK \
+    "srun -p batch -n 1 -c 12 -t 00:05:00 -o MASK.REP%d.out -e MASK.REP%d.err -J maskrep#%d"
+
+#endif
 
 int main(int argc, char *argv[])
 { int   nblocks;
   int   usepath;
   int   useblock;
   int   fblock, lblock;
-#ifdef LSF
+#ifdef HPC
   int   jobid;
 #endif
 
   FILE *out;
   char  name[100];
-  int   stage;
   char *pwd, *root;
 
   int    CINT, SPAN;
-  int    DUNIT, BUNIT;
+  int    BUNIT;
   int    VON, BON, DON;
   int    WINT, TINT, HINT, KINT, SINT, LINT, MINT;
   int    NTHREADS;
+  char  *MASK_NAME, defname[25];
   double EREL;
   int    MMAX, MTOP;
   char **MASK;
@@ -68,7 +90,6 @@ int main(int argc, char *argv[])
     ARG_INIT("HPC.REPmask")
 
     BUNIT = 4;
-    DUNIT = 250;
     KINT  = 14;
     WINT  = 6;
     HINT  = 35;
@@ -87,8 +108,9 @@ int main(int argc, char *argv[])
     ONAME = NULL;
     out   = stdout;
 
-    NTHREADS = 4;
+    NTHREADS  = 4;
 
+    MASK_NAME = NULL;
     SPAN = -1;
     CINT = -1;
 
@@ -128,6 +150,9 @@ int main(int argc, char *argv[])
           case 'l':
             ARG_POSITIVE(LINT,"Minimum ovlerap length")
             break;
+          case 'n':
+            MASK_NAME = argv[i]+2;
+            break;
           case 't':
             ARG_POSITIVE(TINT,"Tuple suppression frequency")
             break;
@@ -148,14 +173,6 @@ int main(int argc, char *argv[])
             break;
           case 'B':
             ARG_NON_NEGATIVE(BUNIT,"Blocks per command")
-            break;
-          case 'D':
-            ARG_NON_NEGATIVE(DUNIT,"Files per merge")
-            if (DUNIT < 3)
-              { fprintf(stderr,"%s: Files per merge must be at least 3 (%d)\n",
-                               Prog_Name,DUNIT);
-                exit (1);
-              }
             break;
           case 'M':
             ARG_NON_NEGATIVE(MINT,"Memory allocation (in Gb)")
@@ -180,6 +197,34 @@ int main(int argc, char *argv[])
         fprintf(stderr,"       %*s %s\n",(int) strlen(Prog_Name),"",Usage[1]);
         fprintf(stderr,"       %*s %s\n",(int) strlen(Prog_Name),"",Usage[2]);
         fprintf(stderr,"       %*s %s\n",(int) strlen(Prog_Name),"",Usage[3]);
+        fprintf(stderr,"\n");
+        fprintf(stderr,"     Passed through to daligner.\n");
+        fprintf(stderr,"      -k: k-mer size (must be <= 32).\n");
+        fprintf(stderr,"      -w: Look for k-mers in averlapping bands of size 2^-w.\n");
+        fprintf(stderr,"      -h: A seed hit if the k-mers in band cover >= -h bps in the");
+        fprintf(stderr," targest read.\n");
+        fprintf(stderr,"      -t: Ignore k-mers that occur >= -t times in a block.\n");
+        fprintf(stderr,"      -M: Use only -M GB of memory by ignoring most frequent k-mers.\n");
+        fprintf(stderr,"\n");
+        fprintf(stderr,"      -e: Look for alignments with -e percent similarity.\n");
+        fprintf(stderr,"      -l: Look for alignments of length >= -l.\n");
+        fprintf(stderr,"      -s: Use -s as the trace point spacing for encoding alignments.\n");
+        fprintf(stderr,"\n");
+        fprintf(stderr,"      -T: Use -T threads.\n");
+        fprintf(stderr,"      -P: Do first level sort and merge in directory -P.\n");
+        fprintf(stderr,"      -m: Soft mask the blocks with the specified mask.\n");
+        fprintf(stderr,"      -b: For AT/GC biased data, compensate k-mer counts (deprecated).\n");
+        fprintf(stderr,"\n");
+        fprintf(stderr,"     Passed through to REPmask.\n");
+        fprintf(stderr,"      -c: coverage threshold for repeat intervals.\n");
+        fprintf(stderr,"      -n: use this name for the repeat mask track.\n");
+        fprintf(stderr,"\n");
+        fprintf(stderr,"     Script control.\n");
+        fprintf(stderr,"      -v: Run all commands in script in verbose mode.\n");
+        fprintf(stderr,"      -g: # of blocks per comparison group.\n");
+        fprintf(stderr,"      -d: Put .las files for each target block in a sub-directory\n");
+        fprintf(stderr,"      -B: # of block compares per daligner job\n");
+        fprintf(stderr,"      -f: Place script bundles in separate files with prefix <name>\n");
         exit (1);
       }
     if (SPAN < 0)
@@ -191,6 +236,10 @@ int main(int argc, char *argv[])
         exit (1);
       }
 
+    if (MASK_NAME == NULL)
+      { sprintf(defname,"rep%d",SPAN);
+        MASK_NAME = defname;
+      }
     for (j = 1; 2*j <= NTHREADS; j *= 2)
       ;
     NTHREADS = j;
@@ -235,6 +284,8 @@ int main(int argc, char *argv[])
       }
 
     usepath = (strcmp(pwd,".") != 0);
+
+    fclose(dbvis);
   }
 
   //  Set range fblock-lblock checking that DB.<fblock-1>.las exists & DB.<fblock>.las does not
@@ -315,7 +366,7 @@ int main(int argc, char *argv[])
     DON = (DON && (SPAN > 1));
   }
 
-  { int level, njobs;
+  { int njobs;
     int i, j, k;
 
     if (DON)
@@ -351,7 +402,7 @@ int main(int argc, char *argv[])
 
     fprintf(out,"# Daligner jobs (%d)\n",njobs);
 
-#ifdef LSF
+#ifdef HPC
     jobid = 1;
 #endif
     for (i = fblock; i <= lblock; i++)
@@ -366,7 +417,14 @@ int main(int argc, char *argv[])
         for (j = 1; j <= bits; j++)
           {
 #ifdef LSF
-            fprintf(out,LSF_ALIGN,SPAN,SPAN,jobid++);
+            fprintf(out,HPC_ALIGN,NTHREADS,SPAN,SPAN,jobid++);
+            fprintf(out," \"");
+#endif
+#ifdef SLURM
+            if (MINT >= 0)
+              fprintf(out,HPC_ALIGN,NTHREADS,(MINT*1024)/NTHREADS,SPAN,SPAN,jobid++);
+            else
+              fprintf(out,HPC_ALIGN,NTHREADS,(16*1024)/NTHREADS,SPAN,SPAN,jobid++);
             fprintf(out," \"");
 #endif
             fprintf(out,"daligner");
@@ -434,7 +492,7 @@ int main(int argc, char *argv[])
                     fprintf(out," && mv %s.%d.%s.%d.las temp%d",root,k,root,i,k);
               }
 
-#ifdef LSF
+#ifdef HPC
             fprintf(out,"\"");
 #endif
             fprintf(out,"\n");
@@ -450,11 +508,11 @@ int main(int argc, char *argv[])
         out = fopen(name,"w");
       }
 
-    njobs = ((lblock-fblock)+1) * ((SPAN-1)/(BUNIT+1) + 1);
+    njobs = (lblock-fblock)+1;
 
     fprintf(out,"# Check inital .las jobs (%d) (optional but recommended)\n",njobs);
 
-#ifdef LSF
+#ifdef HPC
     jobid = 1;
 #endif
     for (i = fblock; i <= lblock; i++)
@@ -462,335 +520,172 @@ int main(int argc, char *argv[])
 
         base = fblock + ((i-fblock)/SPAN)*SPAN;
         if (base + SPAN > lblock+1)
-          base = (lblock+1) - SPAN;
-        for (j = base; j <= (base+SPAN)-1; )
-          { k = j+BUNIT;
-            if (k > (base+SPAN)-1)
-              k = (base+SPAN)-1;
-#ifdef LSF
-            fprintf(out,LSF_CHECK,0,0,jobid++);
-            fprintf(out," \"");
+          base = (lblock+1)-SPAN;
+#ifdef HPC
+        fprintf(out,HPC_CHECK,SPAN,SPAN,jobid++);
+        fprintf(out," \"");
 #endif
-            fprintf(out,"LAcheck -vS");
-            if (usepath)
-              fprintf(out," %s/%s",pwd,root);
-            else
-              fprintf(out," %s",root);
-            while (j <= k)
-              { if (SPAN == 1)
-                  fprintf(out," %s.R1.%d",root,i);
-                else if (DON)
-                  fprintf(out," temp%d/%s.%d.%s.%d",i,root,i,root,j);
-                else
-                  fprintf(out," %s.%d.%s.%d",root,i,root,j);
-                j += 1;
-              }
-#ifdef LSF
-            fprintf(out,"\"");
+        fprintf(out,"LAcheck -vS");
+        if (usepath)
+          fprintf(out," %s/%s",pwd,root);
+        else
+          fprintf(out," %s",root);
+        if (SPAN == 1)
+          fprintf(out," %s.R1.%d",root,i);
+        else if (DON)
+          fprintf(out," temp%d/%s.%d.%s.%c%d-%d",i,root,i,root,BLOCK_SYMBOL,base,base+(SPAN-1));
+        else
+          fprintf(out," %s.%d.%s.%c%d-%d",root,i,root,BLOCK_SYMBOL,base,base+(SPAN-1));
+#ifdef HPC
+        fprintf(out,"\"");
 #endif
-            fprintf(out,"\n");
-          }
+        fprintf(out,"\n");
       }
 
     if (ONAME != NULL)
       fclose(out);
-    stage = 3;
 
-    //  Higher level merges (if SPAN > 1)
+    //  Merges required if SPAN > 1
 
     if (SPAN > 1)
-      { int pow;
+      { if (ONAME != NULL)
+          { sprintf(name,"%s.03.MERGE",ONAME);
+            out = fopen(name,"w");
+          }
 
-        //  Determine numbe of merge levels
+        fprintf(out,"# Merge jobs (%d)\n",njobs);
 
-        pow = 1;
-        for (level = 0; pow < SPAN; level++)
-          pow *= DUNIT;
-
-        //  Issue the commands for each merge level
-
-        { int  p, cnt;
-
-          cnt = SPAN;
-          for (i = 1; i <= level; i++)
-            { int cits;
-              int low, hgh;
-
-              if (ONAME != NULL)
-                { sprintf(name,"%s.%02d.MERGE",ONAME,stage++);
-                  out = fopen(name,"w");
-                }
-
-              cits = (cnt-1)/DUNIT+1;
-
-              //  Incremental update merges
-
-              njobs = ((lblock-fblock)+1)*cits;
-              fprintf(out,"# Level %d jobs (%d)\n",i,njobs);
-
-#ifdef LSF
-              jobid = 1;
+#ifdef HPC
+        jobid = 1;
 #endif
+        for (i = fblock; i <= lblock; i++)
+          { int base;
 
-              //  New block merges
-
-              for (j = fblock; j <= lblock; j++) 
-                { int base;
-
-                  base = fblock + ((j-fblock)/SPAN)*SPAN;
-                  if (base + SPAN > lblock+1)
-                    base = (lblock+1) - SPAN;
-                  base -= 1;
-
-                  low = 1;
-                  for (p = 1; p <= cits; p++)
-                    { hgh = (cnt*p)/cits;
-#ifdef LSF
-                      fprintf(out,LSF_MERGE,i,SPAN,i,SPAN,jobid++);
-                      fprintf(out," \"");
+            base = fblock + ((i-fblock)/SPAN)*SPAN;
+            if (base + SPAN > lblock+1)
+              base = (lblock+1)-SPAN;
+#ifdef HPC
+            fprintf(out,HPC_MERGE,SPAN,SPAN,jobid++);
+            fprintf(out," \"");
 #endif
-                      fprintf(out,"LAmerge");
-                      if (VON)
-                        fprintf(out," -v");
-                      if (DON)
-                        if (cits == 1)
-                          fprintf(out," temp%d/%s.R%d.%d",j,root,SPAN,j);
-                        else
-                          fprintf(out," temp%d/L%d.%d.%d",j,i+1,j,p);
-                      else
-                        if (cits == 1)
-                          fprintf(out," %s.R%d.%d",root,SPAN,j);
-                        else
-                          fprintf(out," L%d.%d.%d",i+1,j,p);
-                      for (k = low; k <= hgh; k++)
-                        if (i == 1)
-                          if (DON)
-                            fprintf(out," temp%d/%s.%d.%s.%d",j,root,j,root,base+k);
-                          else
-                            fprintf(out," %s.%d.%s.%d",root,j,root,base+k);
-                        else
-                          if (DON)
-                            fprintf(out," temp%d/L%d.%d.%d",j,i,j,k);
-                          else
-                            fprintf(out," L%d.%d.%d",i,j,k);
-#ifdef LSF
-                      fprintf(out,"\"");
+            fprintf(out,"LAmerge ");
+            if (VON)
+              fprintf(out," -v");
+            if (DON)
+              fprintf(out," temp%d/%s.R%d.%d",i,root,SPAN,i);
+            else
+              fprintf(out," %s.R%d.%d",root,SPAN,i);
+            if (usepath)
+              fprintf(out," %s/%s",pwd,root);
+            else
+              fprintf(out," %s",root);
+            if (DON)
+              fprintf(out," temp%d/%s.%d.%s.%c%d-%d",i,root,i,root,BLOCK_SYMBOL,base,base+(SPAN-1));
+            else
+              fprintf(out," %s.%d.%s.%c%d-%d",root,i,root,BLOCK_SYMBOL,base,base+(SPAN-1));
+
+            fprintf(out," && LAcheck -vS");
+            if (DON)
+              fprintf(out," temp%d/%s.R%d.%d",i,root,SPAN,i);
+            else
+              fprintf(out," %s.R%d.%d",root,SPAN,j);
+#ifdef HPC
+            fprintf(out,"\"");
 #endif
-                      fprintf(out,"\n");
-                      low = hgh+1;
-                    }
-                }
+            fprintf(out,"\n");
+          }
 
-              //  Check new .las (optional)
+        if (ONAME != NULL)
+          { fclose(out);
+            sprintf(name,"%s.04.RM",ONAME);
+            out = fopen(name,"w");
+          }
 
-              if (ONAME != NULL)
-                { fclose(out);
-                  sprintf(name,"%s.%02d.CHECK.OPT",ONAME,stage++);
-                  out = fopen(name,"w");
-                }
+        fprintf(out,"# Remove block-pair .las files\n");
 
-              fprintf(out,"# Check level %d .las files jobs (%d) (optional but recommended)\n",
-                          i+1,((lblock-fblock)+1)*((cits-1)/(BUNIT+1)+1));
+        for (j = fblock; j <= lblock; j++) 
+          if (DON)
+            fprintf(out,"rm -r temp%d\n",j);
+          else
+            fprintf(out,"rm %s.%d.%s.*.las\n",root,j,root);
 
-#ifdef LSF
-              jobid = 1;
-#endif
-              for (j = fblock; j <= lblock; j++) 
-                for (p = 1; p <= cits; )
-                  { k = p+BUNIT;
-                    if (k > cits)
-                      k = cits;
-#ifdef LSF
-                    fprintf(out,LSF_CHECK,i,i,jobid++);
-                    fprintf(out," \"");
-#endif
-                    fprintf(out,"LAcheck -vS");
-                    if (usepath)
-                      fprintf(out," %s/%s",pwd,root);
-                    else
-                      fprintf(out," %s",root);
-                    while (p <= k)
-                      { if (DON)
-                          if (cits == 1)
-                            fprintf(out," temp%d/%s.R%d.%d",j,root,SPAN,j);
-                          else
-                            fprintf(out," temp%d/L%d.%d.%d",j,i+1,j,p);
-                        else
-                          if (cits == 1)
-                            fprintf(out," %s.R%d.%d",root,SPAN,j);
-                          else
-                            fprintf(out," L%d.%d.%d",i+1,j,p);
-                        p += 1;
-                      }
-#ifdef LSF
-                    fprintf(out,"\"");
-#endif
-                    fprintf(out,"\n");
-                  }
-
-              //  Cleanup (optional)
-
-              if (ONAME != NULL)
-                { fclose(out);
-                  sprintf(name,"%s.%02d.RM",ONAME,stage++);
-                  out = fopen(name,"w");
-                }
-
-              fprintf(out,"# Remove level %d .las files)\n",i);
-
-              for (j = fblock; j <= lblock; j++) 
-                { int base;
-
-                  base = fblock + ((j-fblock)/SPAN)*SPAN;
-                  if (base + SPAN > lblock+1)
-                    { int n, u;
-                      int mnt, mits;
-
-                      n = (lblock+1) - SPAN;
-                      u = j - (base-n);
-                      if (i == 1 && u < base)
-                        { mnt  = (lblock+1)-base;
-                          mits = (mnt-1)/DUNIT+1;
-                          low  = 1;
-                          base -= 1;
-                          for (p = 1; p <= mits; p++)
-                            { hgh = (mnt*p)/mits;
-                              fprintf(out,"rm");
-                              for (k = low; k <= hgh; k++)
-                                if (DON)
-                                  fprintf(out," temp%d/%s.%d.%s.%d.las",u,root,u,root,base+k);
-                                else
-                                  fprintf(out," %s.%d.%s.%d.las",root,u,root,base+k);
-                              fprintf(out,"\n");
-                              low = hgh+1;
-                            }
-                        }
-                      base = n;
-                    }
-                  base -= 1;
-
-                  low = 1;
-                  for (p = 1; p <= cits; p++)
-                    { hgh = (cnt*p)/cits;
-                      fprintf(out,"rm");
-                      for (k = low; k <= hgh; k++)
-                        if (i == 1)
-                          if (DON)
-                            fprintf(out," temp%d/%s.%d.%s.%d.las",j,root,j,root,base+k);
-                          else
-                            fprintf(out," %s.%d.%s.%d.las",root,j,root,base+k);
-                        else
-                          if (DON)
-                            fprintf(out," temp%d/L%d.%d.%d.las",j,i,j,k);
-                          else
-                            fprintf(out," L%d.%d.%d.las",i,j,k);
-                      fprintf(out,"\n");
-                      low = hgh+1;
-                    }
-                }
-
-              if (ONAME != NULL)
-                fclose(out);
-
-              cnt = cits;
-            }
-        }
+        if (ONAME != NULL)
+          fclose(out);
       }
 
     //  Finish with MASKrep
 
-    { int h, step;
-
-      if (ONAME != NULL)
-        { sprintf(name,"%s.%02d.MASK",ONAME,stage++);
-          out = fopen(name,"w");
-        }
+    if (ONAME != NULL)
+      { sprintf(name,"%s.05.MASK",ONAME);
+        out = fopen(name,"w");
+      }
  
-#ifdef LSF
+#ifdef HPC
     jobid = 1;
 #endif
-      step   = (SPAN-1)/BUNIT+1;
-      njobs  = (((lblock-fblock)+1) / SPAN)*step;
-      step   = (SPAN-1)/step+1;
-      njobs += ((((lblock-fblock)+1) % SPAN)-1)/step + 1;
+    njobs  = (lblock-fblock) / BUNIT + 1;
 
-      fprintf(out,"# REPmask jobs (%d)\n",njobs);
+    fprintf(out,"# REPmask jobs (%d)\n",njobs);
 
-      for (i = fblock; i <= lblock; i += SPAN)
-       for (h = i; h < i+SPAN && h <= lblock; h += step)
-        {
-#ifdef LSF
-          fprintf(out,LSF_MASK,SPAN,SPAN,jobid++);
+    { int low, hgh;
+
+      low = fblock;
+      for (j = 1; j <= njobs; j++)
+        { hgh = (fblock-1) + (((lblock-fblock)+1)*j)/njobs;
+          
+#ifdef HPC
+          fprintf(out,HPC_MASK,SPAN,SPAN,jobid++);
           fprintf(out," \"");
 #endif
           fprintf(out,"REPmask");
           if (VON)
             fprintf(out," -v");
-          fprintf(out," -c%d -mrep%d",CINT,SPAN);
+          fprintf(out," -c%d -n%s",CINT,MASK_NAME);
           if (usepath)
             fprintf(out," %s/%s",pwd,root);
           else
             fprintf(out," %s",root);
-          j = h+step;
-          if (j > i+SPAN)
-            j = i+SPAN;
-          if (j > lblock)
-            j = lblock+1;
-          for (k = h; k < j; k++)
-            if (DON)
-              fprintf(out," temp%d/%s.R%d.%d",k,root,SPAN,k);
-            else
-              fprintf(out," %s.R%d.%d",root,SPAN,k);
-#ifdef LSF
+          if (DON)
+            fprintf(out," temp%d/%s.R%d.%c%d-%d",k,root,SPAN,BLOCK_SYMBOL,low,hgh);
+          else
+            fprintf(out," %s.R%d.%c%d-%d",root,SPAN,BLOCK_SYMBOL,low,hgh);
+          low = hgh+1;
+#ifdef HPC
           fprintf(out,"\"");
 #endif
           fprintf(out,"\n");
         }
-
-      //  Cleanup (optinoal)
-
-      if (ONAME != NULL)
-        { sprintf(name,"%s.%02d.RM",ONAME,stage++);
-          out = fopen(name,"w");
-        }
-
-      if (DON)
-        fprintf(out,"# Cleanup all temporary directories\n");
-      else
-        fprintf(out,"# Cleanup all R%d.las files\n",SPAN);
-
-      if (DON)
-        for (i = fblock; i <= lblock; i++)
-          fprintf(out,"rm -r temp%d\n",i);
-      else
-        for (i = fblock; i <= lblock; i += SPAN)
-         for (h = i; h < i+SPAN && h <= lblock; h += step)
-          { fprintf(out,"rm");
-            j = h+step;
-            if (j > i+SPAN)
-              j = i+SPAN;
-            if (j > lblock)
-              j = lblock+1;
-            for (k = h; k < j; k++)
-              fprintf(out," %s.R%d.%d.las",root,SPAN,k);
-            fprintf(out,"\n");
-          }
-  
-      if (ONAME != NULL)
-        fclose(out);
     }
+
+    if (ONAME != NULL)
+      { sprintf(name,"%s.06.RM",ONAME);
+        out = fopen(name,"w");
+      }
+
+    if (DON)
+      fprintf(out,"# Cleanup all temporary directories\n");
+    else
+      fprintf(out,"# Cleanup all R%d.las files\n",SPAN);
+
+    if (DON)
+      fprintf(out,"rm -r temp*\n");
+    else
+      fprintf(out,"rm %s.R%d.*.las\n",root,SPAN);
+  
+    if (ONAME != NULL)
+      fclose(out);
   }
 
   printf("# Once all the .rep masks have been computed for every block\n");
   printf("#   you should call 'Catrack' to merge them, and then you should\n");
   printf("#   remove the individual block tracks, e.g.:\n");
   if (usepath)
-    { printf("#      Catrack -v %s/%s rep%d\n",pwd,root,SPAN);
-      printf("#      rm %s/.%s.*.rep%d.*\n",pwd,root,SPAN);
+    { printf("#      Catrack -v %s/%s %s\n",pwd,root,MASK_NAME);
+      printf("#      rm %s/.%s.*.%s.*\n",pwd,root,MASK_NAME);
     }
   else
-    { printf("#      Catrack -v %s rep%d\n",root,SPAN);
-      printf("#      rm .%s.*.rep%d.*\n",root,SPAN);
+    { printf("#      Catrack -v %s %s\n",root,MASK_NAME);
+      printf("#      rm .%s.*.%s.*\n",root,MASK_NAME);
     }
 
 

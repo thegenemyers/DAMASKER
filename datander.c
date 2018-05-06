@@ -53,7 +53,7 @@ static int read_DB(DAZZ_DB *block, char *name, int kmer)
 
   isdam = Open_DB(name,block);
   if (isdam < 0)
-    exit (1);
+    Clean_Exit(1);
 
   Trim_DB(block);
 
@@ -62,7 +62,7 @@ static int read_DB(DAZZ_DB *block, char *name, int kmer)
         if (block->reads[i].rlen < kmer)
           { fprintf(stderr,"%s: Block %s contains reads < %dbp long !  Run DBsplit.\n",
                            Prog_Name,name,kmer);
-            exit (1);
+            Clean_Exit(1);
           }
     }
 
@@ -71,20 +71,33 @@ static int read_DB(DAZZ_DB *block, char *name, int kmer)
   return (isdam);
 }
 
-static char *CommandBuffer(char *bname)
+static char *CommandBuffer(char *bname, char *spath)
 { static char *cat = NULL;
   static int   max = -1;
   int len;
 
-  len = 2*strlen(bname) + 200;
+  len = 2*(strlen(bname) + strlen(spath)) + 200;
   if (len > max)
     { max = ((int) (1.2*len)) + 100;
       if ((cat = (char *) realloc(cat,max+1)) == NULL)
         { fprintf(stderr,"%s: Out of memory (Making path name)\n",Prog_Name);
-          exit (1);
+          Clean_Exit(1);
         }
     }
   return (cat);
+}
+
+void Clean_Exit(int val)
+{ char *command;
+
+  command = CommandBuffer("",SORT_PATH);
+  sprintf(command,"rm -r %s",SORT_PATH);
+  if (system(command) != 0)
+    { fprintf(stderr,"%s: Command Failed:\n%*s      %s\n",
+                     Prog_Name,(int) strlen(Prog_Name),"",command);
+      exit (1);
+    }
+  exit (val);
 }
 
 int main(int argc, char *argv[])
@@ -174,6 +187,19 @@ int main(int argc, char *argv[])
     if (argc <= 1)
       { fprintf(stderr,"Usage: %s %s\n",Prog_Name,Usage[0]);
         fprintf(stderr,"       %*s %s\n",(int) strlen(Prog_Name),"",Usage[1]);
+        fprintf(stderr,"\n");
+        fprintf(stderr,"      -v: Verbose mode, output statistics as proceed.\n");
+        fprintf(stderr,"      -k: k-mer size (must be <= 32).\n");
+        fprintf(stderr,"      -w: Look for k-mers in averlapping bands of size 2^-w.\n");
+        fprintf(stderr,"      -h: A seed hit if the k-mers in band cover >= -h bps in the");
+        fprintf(stderr," targest read.\n");
+        fprintf(stderr,"\n");
+        fprintf(stderr,"      -e: Look for alignments with -e percent similarity.\n");
+        fprintf(stderr,"      -l: Look for alignments of length >= -l.\n");
+        fprintf(stderr,"      -s: Use -s as the trace point spacing for encoding alignments.\n");
+        fprintf(stderr,"\n");
+        fprintf(stderr,"      -T: Use -T threads.\n");
+        fprintf(stderr,"      -P: Do first level sort and merge in directory -P.\n");
         exit (1);
       }
   }
@@ -184,7 +210,27 @@ int main(int argc, char *argv[])
       exit (1);
     }
 
-  /* Compare each block against itself */
+  { float freq[4] = { .25, .25, .25, .25};
+
+    settings = New_Align_Spec( AVE_ERROR, SPACING, freq, 0);
+  }
+
+  // Create directory in SORT_PATH for file operations
+
+  { char *newpath;
+
+    newpath = (char *) Malloc(strlen(SORT_PATH)+30,"Allocating sort path");
+    if (newpath == NULL)
+      exit (1);
+    sprintf(newpath,"%s/datander.%d",SORT_PATH,getpid());
+    if (mkdir(newpath,S_IRWXU) !=  0)
+      { fprintf(stderr,"%s: Could not create directory %s\n",Prog_Name,newpath);
+        exit (1);
+      }
+    SORT_PATH = newpath;
+  }
+
+  // Compare each block against itself
 
   { int i;
 
@@ -197,29 +243,28 @@ int main(int argc, char *argv[])
         else
           broot = Root(bfile,".db");
 
-        settings = New_Align_Spec( AVE_ERROR, SPACING, bblock->freq, 0);
-
         Match_Self(broot,bblock,settings);
 
-        Free_Align_Spec(settings);
         Close_DB(bblock);
 
-        command = CommandBuffer(broot);
+        command = CommandBuffer(broot,SORT_PATH);
 
-        sprintf(command,"LAsort %s/%s.T*.las",SORT_PATH,broot);
-        if (VERBOSE)
-          printf("\n%s\n",command);
-        system(command);
-        sprintf(command,"LAmerge TAN.%s.las %s/%s.T*.S.las",broot,SORT_PATH,broot);
-        if (VERBOSE)
-          printf("%s\n",command);
-        system(command);
-        sprintf(command,"rm %s/%s.T*.las",SORT_PATH,broot);
-        if (VERBOSE)
-          printf("%s\n",command);
-        system(command);
+#define SYSTEM_CHECK(command)                                           \
+ if (VERBOSE)                                                           \
+   printf("%s\n",command);                                              \
+ if (system(command) != 0)                                              \
+   { fprintf(stderr,"\n%s: Command Failed:\n%*s      %s\n",             \
+                    Prog_Name,(int) strlen(Prog_Name),"",command);      \
+     Clean_Exit(1);                                                     \
+   }
+
+        sprintf(command,"LAsort %s/%s.T%c.las",SORT_PATH,broot,BLOCK_SYMBOL);
+        SYSTEM_CHECK(command)
+
+        sprintf(command,"LAmerge TAN.%s.las %s/%s.T%c.S.las",broot,SORT_PATH,broot,BLOCK_SYMBOL);
+        SYSTEM_CHECK(command)
       }
   }
 
-  exit (0);
+  Clean_Exit(0);
 }

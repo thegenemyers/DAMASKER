@@ -22,4 +22,6 @@ int Set_Filter_Params(int kmer, int binshift, int hitmin, int nthreads);
 
 void Match_Self(char *aname, DAZZ_DB *ablock, Align_Spec *settings);
 
+void Clean_Exit(int val);
+
 #endif

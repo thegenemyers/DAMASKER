@@ -13,7 +13,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include <math.h>
 
 #include "DB.h"
 #include "align.h"
@@ -24,7 +23,8 @@
 #define PATHSEP "/"
 #endif
 
-static char *Usage = "[-v] [-m<track(tan)>] [-l<int(500)>] <source:db> <overlaps:las> ...";
+static char *Usage = "[-v] [-n<track(tan)>] [-l<int(500)>] <source:db> <overlaps:las> ...";
+
 
 //  Partition Constants
 
@@ -273,11 +273,8 @@ static int make_a_pass(FILE *input, void (*ACTION)(int, Overlap *, int), int tra
   return (max);
 }
 
-
 int main(int argc, char *argv[])
-{ FILE       *input;
-  char       *root, *dpwd;
-  char       *las, *lpwd;
+{ char       *root, *dpwd;
   int         c;
   char       *MASK_NAME;
 
@@ -299,7 +296,7 @@ int main(int argc, char *argv[])
         { default:
             ARG_FLAGS("v")
             break;
-          case 'm':
+          case 'n':
             MASK_NAME = argv[i]+2;
             break;
           case 'l':
@@ -314,6 +311,10 @@ int main(int argc, char *argv[])
 
     if (argc < 3)
       { fprintf(stderr,"Usage: %s %s\n",Prog_Name,Usage);
+        fprintf(stderr,"\n");
+        fprintf(stderr,"      -v: Verbose mode, output statistics as proceed.\n");
+        fprintf(stderr,"      -l: shortest tandem interval to report.\n");
+        fprintf(stderr,"      -n: use this name as for the tandem mask track\n");
         exit (1);
       }
   }
@@ -342,7 +343,7 @@ int main(int argc, char *argv[])
       masked = 0;
       nmasks = 0;
 
-      printf("\nTANmask -l%d -m%s %s",MIN_LEN,MASK_NAME,argv[1]);
+      printf("\nTANmask -l%d -n%s %s",MIN_LEN,MASK_NAME,argv[1]);
       for (i = 2; i < argc; i++)
         printf(" %s",argv[i]);
       printf("\n");
@@ -355,94 +356,87 @@ int main(int argc, char *argv[])
   root = Root(argv[1],".db");
 
   for (c = 2; c < argc; c++)
-    { las  = Root(argv[c],".las");
+    { Block_Looper *parse;
+      FILE         *input;
 
-      DB_PART  = 0;
-      DB_FIRST = 0;
-      DB_LAST  = DB->nreads;
+      parse = Parse_Block_Arg(argv[c]);
 
-      { FILE *dbfile;
-        char  buffer[2*MAX_NAME+100];
-        char *p, *eptr;
-        int   i, part, nfiles, nblocks, cutoff, all, oindx;
-        int64 size;
+      while ((input = Next_Block_Arg(parse)) != NULL)
+        { DB_PART  = 0;
+          DB_FIRST = 0;
+          DB_LAST  = DB->nreads;
 
-        p = rindex(las,'.');
-        if (p != NULL)
-          { part = strtol(p+1,&eptr,10);
-            if (*eptr == '\0' && eptr != p+1)
-              { dbfile = Fopen(Catenate(dpwd,"/",root,".db"),"r");
-                if (dbfile == NULL)
-                  exit (1);
-                if (fscanf(dbfile,DB_NFILE,&nfiles) != 1)
-                  SYSTEM_READ_ERROR
-                for (i = 0; i < nfiles; i++)
-                  if (fgets(buffer,2*MAX_NAME+100,dbfile) == NULL)
-                    SYSTEM_READ_ERROR
-                if (fscanf(dbfile,DB_NBLOCK,&nblocks) != 1)
-                  SYSTEM_READ_ERROR
-                if (fscanf(dbfile,DB_PARAMS,&size,&cutoff,&all) != 3)
-                  SYSTEM_READ_ERROR
-                for (i = 1; i <= part; i++)
-                  if (fscanf(dbfile,DB_BDATA,&oindx,&DB_FIRST) != 2)
-                    SYSTEM_READ_ERROR
-                if (fscanf(dbfile,DB_BDATA,&oindx,&DB_LAST) != 2)
-                  SYSTEM_READ_ERROR
-                fclose(dbfile);
-                DB_PART = part;
-                *p = '\0';
+          { FILE *dbfile;
+            char  buffer[2*MAX_NAME+100];
+            char *p, *eptr;
+            int   i, part, nfiles, nblocks, cutoff, all, oindx;
+            int64 size;
+
+            p = rindex(Block_Arg_Root(parse),'.');
+            if (p != NULL)
+              { part = strtol(p+1,&eptr,10);
+                if (*eptr == '\0' && eptr != p+1)
+                  { dbfile = Fopen(Catenate(dpwd,"/",root,".db"),"r");
+                    if (dbfile == NULL)
+                      exit (1);
+                    if (fscanf(dbfile,DB_NFILE,&nfiles) != 1)
+                      SYSTEM_READ_ERROR
+                    for (i = 0; i < nfiles; i++)
+                      if (fgets(buffer,2*MAX_NAME+100,dbfile) == NULL)
+                        SYSTEM_READ_ERROR
+                    if (fscanf(dbfile,DB_NBLOCK,&nblocks) != 1)
+                      SYSTEM_READ_ERROR
+                    if (fscanf(dbfile,DB_PARAMS,&size,&cutoff,&all) != 3)
+                      SYSTEM_READ_ERROR
+                    for (i = 1; i <= part; i++)
+                      if (fscanf(dbfile,DB_BDATA,&oindx,&DB_FIRST) != 2)
+                        SYSTEM_READ_ERROR
+                    if (fscanf(dbfile,DB_BDATA,&oindx,&DB_LAST) != 2)
+                      SYSTEM_READ_ERROR
+                    fclose(dbfile);
+                    DB_PART = part;
+                  }
               }
           }
-      }
 
-      //  Set up mask track
+          //  Set up mask track
 
-      { int len, size;
-        char  ans[strlen(MASK_NAME)+7];
-        char  dts[strlen(MASK_NAME)+7];
+          { int len, size;
+            char  ans[strlen(MASK_NAME)+7];
+            char  dts[strlen(MASK_NAME)+7];
 
-        strcpy(ans,Catenate(".",MASK_NAME,".","anno"));
-        strcpy(dts,Catenate(".",MASK_NAME,".","data"));
-        if (DB_PART > 0)
-          { TN_AFILE = Fopen(Catenate(dpwd,PATHSEP,root,
-                                      Numbered_Suffix(".",DB_PART,ans)),"w");
-            TN_DFILE = Fopen(Catenate(dpwd,PATHSEP,root,
-                                      Numbered_Suffix(".",DB_PART,dts)),"w");
+            strcpy(ans,Catenate(".",MASK_NAME,".","anno"));
+            strcpy(dts,Catenate(".",MASK_NAME,".","data"));
+            if (DB_PART > 0)
+              { TN_AFILE = Fopen(Catenate(dpwd,PATHSEP,root,
+                                          Numbered_Suffix(".",DB_PART,ans)),"w");
+                TN_DFILE = Fopen(Catenate(dpwd,PATHSEP,root,
+                                          Numbered_Suffix(".",DB_PART,dts)),"w");
+              }
+            else
+              { TN_AFILE = Fopen(Catenate(dpwd,PATHSEP,root,ans),"w");
+                TN_DFILE = Fopen(Catenate(dpwd,PATHSEP,root,dts),"w");
+              }
+            if (TN_AFILE == NULL || TN_DFILE == NULL)
+              exit (1);
+
+            len  = DB_LAST - DB_FIRST;
+            size = 0;
+            fwrite(&len,sizeof(int),1,TN_AFILE);
+            fwrite(&size,sizeof(int),1,TN_AFILE);
+            TN_INDEX = 0;
+            fwrite(&TN_INDEX,sizeof(int64),1,TN_AFILE);
           }
-        else
-          { TN_AFILE = Fopen(Catenate(dpwd,PATHSEP,root,ans),"w");
-            TN_DFILE = Fopen(Catenate(dpwd,PATHSEP,root,dts),"w");
-          }
-        if (TN_AFILE == NULL || TN_DFILE == NULL)
-          exit (1);
 
-        len  = DB_LAST - DB_FIRST;
-        size = 0;
-        fwrite(&len,sizeof(int),1,TN_AFILE);
-        fwrite(&size,sizeof(int),1,TN_AFILE);
-        TN_INDEX = 0;
-        fwrite(&TN_INDEX,sizeof(int64),1,TN_AFILE);
-      }
+          //  Process each read pile
 
-      //  Open overlap file
+          make_a_pass(input,TANDEM,0);
 
-      lpwd = PathTo(argv[c]);
-      if (DB_PART > 0)
-        input = Fopen(Catenate(lpwd,"/",las,Numbered_Suffix(".",DB_PART,".las")),"r");
-      else
-        input = Fopen(Catenate(lpwd,"/",las,".las"),"r");
-      if (input == NULL)
-        exit (1);
+          fclose(TN_AFILE);
+          fclose(TN_DFILE);
+        }
 
-      free(lpwd);
-      free(las);
-
-      //  Process each read pile
-
-      make_a_pass(input,TANDEM,0);
-
-      fclose(TN_AFILE);
-      fclose(TN_DFILE);
+      Free_Block_Arg(parse);
     }
 
   if (VERBOSE)

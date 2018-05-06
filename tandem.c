@@ -421,7 +421,7 @@ static KmerPos *Sort_Kmers(DAZZ_DB *block, int *len, KmerPos **buffer)
       trg = (KmerPos *) Malloc(sizeof(KmerPos)*(kmers+1),"Allocating Sort_Kmers vectors");
     }
   if (src == NULL || trg == NULL)
-    exit (1);
+    Clean_Exit(1);
 
   if (VERBOSE)
     { printf("\n   Kmer count = ");
@@ -692,7 +692,7 @@ static void Fusion(Path *path1, int ap, Path *path2, Trace_Buffer *tbuf)
     { tbuf->max = 1.2*(tbuf->top+len) + 1000;
       tbuf->trace = (uint16 *) Realloc(tbuf->trace,sizeof(uint16)*tbuf->max,"Allocating paths");
       if (tbuf->trace == NULL)
-        exit (1);
+        Clean_Exit(1);
     }
 
   trace = tbuf->trace + tbuf->top;
@@ -909,7 +909,7 @@ static void *report_thread(void *arg)
   tbuf->trace = Malloc(sizeof(short)*tbuf->max,"Allocating trace vector");
 
   if (amatch == NULL || tbuf->trace == NULL)
-    exit (1);
+    Clean_Exit(1);
 
   fwrite(&ahits,sizeof(int64),1,ofile);
   fwrite(&MR_tspace,sizeof(int),1,ofile);
@@ -1008,14 +1008,14 @@ static void *report_thread(void *arg)
                           amatch = Realloc(amatch,sizeof(Path)*AOmax,
                                            "Reallocating match vector");
                           if (amatch == NULL)
-                            exit (1);
+                            Clean_Exit(1);
                         }
                       if (tbuf->top + apath->tlen > tbuf->max)
                         { tbuf->max = 1.2*(tbuf->top+apath->tlen) + TRACE_CHUNK;
                           tbuf->trace = Realloc(tbuf->trace,sizeof(short)*tbuf->max,
                                                 "Reallocating trace vector");
                           if (tbuf->trace == NULL)
-                            exit (1);
+                            Clean_Exit(1);
                         }
                       amatch[novla] = *apath;
                       amatch[novla].trace = (void *) (tbuf->top);
@@ -1101,7 +1101,7 @@ static void *report_thread(void *arg)
           { ovla->path = amatch[i];
             ovla->path.trace = tbuf->trace + (uint64) (ovla->path.trace);
             if (small)
-              Compress_TraceTo8(ovla);
+              Compress_TraceTo8(ovla,1);
             Write_Overlap(ofile,ovla,tbytes);
           }
         ahits += novla;
@@ -1280,7 +1280,7 @@ void Match_Self(char *aname, DAZZ_DB *ablock, Align_Spec *aspec)
     w = ((ablock->maxlen >> Binshift) - ((-ablock->maxlen) >> Binshift)) + 1;
     counters = (int *) Malloc(NTHREADS*3*w*sizeof(int),"Allocating diagonal buckets");
     if (counters == NULL)
-      exit (1);
+      Clean_Exit(1);
 
     for (i = 0; i < 3*w*NTHREADS; i++)
       counters[i] = 0;
@@ -1296,7 +1296,7 @@ void Match_Self(char *aname, DAZZ_DB *ablock, Align_Spec *aspec)
         parmr[i].ofile =
              Fopen(Catenate(SORT_PATH,"/",aname,Numbered_Suffix(".T",i+1,".las")),"w");
         if (parmr[i].ofile == NULL)
-          exit (1);
+          Clean_Exit(1);
       }
 
 #ifdef NOTHREAD
