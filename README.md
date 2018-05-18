@@ -100,3 +100,42 @@ The -d option requests scripts that organize files into a collection of sub-dire
 HPC.TANmask writes a UNIX shell script to the standard output that runs datander on all relevant blocks of the supplied DB, then sorts and merges the resulting alignments into a single .las for each block, and finally calls TANmask on each LA block to produce a tandem mask with name \<-n\> for each block that can be merge into a single track for the entire DB with Catrack.
 
 All option arguments are passed through to datander or TANmask except for -l which is passed to both, and except for the -f option which serves the same role as for HPC.REPmask above.  The -v option is passed to all programs in the script.  If the integers \<first\> and \<last\> are missing then the script produced is for every block in the database \<reads\>. If \<first\> is present then HPC.TANmask produces a script that produces .tan tracks for blocks \<first\> through \<last\> (\<last\> = \<first\> if not present).
+
+```
+6. HPC.DAScover [-vlF] [-U(w<int(64)> |t<double(.2)> |m<int(10)> |b) ]
+                       [-S(k<int(12)> |w<int(4)> |h<int(35)> |e<double(.7)> |l<int(500)>) ]
+                       [-L(k<int(14)> |w<int(6)> |h<int(35)> |e<double(.7)> |l<int(1000)> |t<int>) ]
+                       [-c<int(10)>] [-s<int(100)] [-M<int>] [-P<dir(/tmp)>] [-T<int(4)>]
+                       [-B<int(4)>] [-f<name>] <reads:db|dam> [<target:int(1)>]
+```
+
+HPC.DAScover writes a UNIX shell script to the standard output that incrementally updates the .las
+file for a given target block against all others in a growing database.   As such there are files
+that persist between executions of HPC.DAScover scripts.  After executing the script for target
+block, say T, on a data base DB with N blocks, the following files will be present (in the
+directory containing the database): (a) dust, tan, and rep block tracks for blocks 1 to N-1, and
+(b) DB.<N-1>.T.las that contains all the LAs between reads in block 1 and all reads in blocks
+1 to N-1.  The last block, N, is not compared because one cannot be certain it will not change
+when new data is added to DB.  The -l option forces that last block to be included, but should
+only be invoked when one is certain that no more data will be added to the database.  If necessary,
+one can produce a script that starts from the beginning by setting the -F option.
+
+One can produce scripts that operate on *different* target blocks for the same DB.  The desired
+target block is the optional second argment to HPC.DAScover.  The production of the block tracks
+for the DB are common to all  computations, and not performed again for each target block.  Only
+the comparisons of the target block versus all other blocks are required.
+
+The UNIX shell script produced by HPC.DAScover invokes many Dazzler commands including DBdust,
+datander, REPmask, daligner, and LAmerge.  Many of the options to HPC.DAScover are directed to
+these underlying commands as follows.
+All the options beginning with -U are passed to DBdust with the U removed.  Similarly, -S options
+are passed to datander, and -L options are directed at all daligner calls.  The -M option sets
+the memory limit for all daligner calls.  The -P option sets the scratch directory for daligner,
+datander, and LAmerge.  The -T option sets the number of threads and the -s options sets the
+trace point spacing for all daligner and datander calls.
+The -c option is passed to REPmask calls.
+
+The -B option controls the number of blocks compared or analyzed in any given command line
+call (except for LAmerge).  And as for other HPC script generators, the -f\<n\> option directs
+the script into a series of files whose names begin with \<n\> that should then be performed
+in sequence.

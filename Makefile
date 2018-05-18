@@ -2,7 +2,7 @@ DEST_DIR = ~/bin
 
 CFLAGS = -O3 -Wall -Wextra -Wno-unused-result -fno-strict-aliasing
 
-ALL = datander TANmask REPmask HPC.TANmask HPC.REPmask
+ALL = datander TANmask REPmask HPC.TANmask HPC.REPmask HPC.DAScover
 
 all: $(ALL)
 
@@ -20,6 +20,9 @@ HPC.TANmask: HPC.TANmask.c DB.c DB.h QV.c QV.h
 
 HPC.REPmask: HPC.REPmask.c DB.c DB.h QV.c QV.h
 	gcc $(CFLAGS) -o HPC.REPmask HPC.REPmask.c DB.c QV.c -lm
+
+HPC.DAScover: HPC.DAScover.c DB.c DB.h QV.c QV.h
+	gcc $(CFLAGS) -o HPC.DAScover HPC.DAScover.c DB.c QV.c -lm
 
 clean:
 	rm -f $(ALL)

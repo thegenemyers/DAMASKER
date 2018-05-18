@@ -434,6 +434,7 @@ int main(int argc, char *argv[])
 
           fclose(TN_AFILE);
           fclose(TN_DFILE);
+          fclose(input);
         }
 
       Free_Block_Arg(parse);

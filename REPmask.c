@@ -24,8 +24,9 @@
 
 static char *Usage = "[-v] [-n<track(rep)] -c<int> <source:db> <overlaps:las> ...";
 
-#undef  DEBUG_BLOCKS
-#undef  DEBUG_GAP_MERGE
+#undef   DEBUG_BLOCKS
+#undef   DEBUG_GAP_MERGE
+#undef   DEBUG_WELL_SELECTION
 
 
 //  Partition Constants
@@ -41,11 +42,11 @@ static char *Usage = "[-v] [-n<track(rep)] -c<int> <source:db> <overlaps:las> ..
 static int VERBOSE;
 static int MIN_COVER;
 
-static DAZZ_DB _DB, *DB = &_DB;   //  Data base
-
-static int DB_PART;               //  Input is an Overlap block
-static int DB_FIRST;              //     for reads DB_FIRST to DB_LAST-1
-static int DB_LAST;
+static DAZZ_DB   _DB, *DB = &_DB;     //  Data base
+static int        DB_FIRST;           //  First read of DB to process
+static int        DB_LAST;            //  Last read of DB to process (+1)
+static int        DB_PART;            //  0 if all, otherwise block #
+static DAZZ_READ *Reads;              //  Data base reads array
 
 static int TRACE_SPACING;         //  Trace spacing (from .las file)
 static int TBYTES;                //  Bytes per trace segment (from .las file)
@@ -239,12 +240,10 @@ static void PARTITION(int aread, Overlap *ovls, int novl)
 
 #ifdef DEBUG_GAP_MERGE
     printf("\nGAPS\n");
-    if (novl > 0)
-      { ipath = &(ovls[0].path);
-        bread = ovls[0].bread;
-        printf("    %5d %5d  [%5d,%5d] [%5d,%5d]\n",
-               aread,bread,ipath->abpos,ipath->aepos,ipath->bbpos,ipath->bepos);
-      }
+    ipath = &(ovls[0].path);
+    bread = ovls[0].bread;
+    printf("    %5d %5d  [%5d,%5d] [%5d,%5d]\n",
+           aread,bread,ipath->abpos,ipath->aepos,ipath->bbpos,ipath->bepos);
 #endif
 
     k = 0;
@@ -286,6 +285,85 @@ static void PARTITION(int aread, Overlap *ovls, int novl)
           }
       }
     novl = k+1;
+  }
+
+  //  For reads that come from the same well, take only the las from the one that
+  //    covers A the most (in both directions).
+
+  { int   i, j, k, t;
+    int   bread, lread, cssr;
+    Path *ipath;
+    int   best, score;
+    int   bnbeg, snbeg;
+#ifdef DEBUG_WELL_SELECTION
+    int   multi;
+#endif
+
+    k = 0;
+    for (i = 0; i < novl; i = j)
+      { bread = ovls[i].bread;
+
+        for (j = bread+1; j < DB_LAST; j++)
+          if ((Reads[j].flags & DB_CSS) == 0)
+            break;
+        cssr = j;
+
+#ifdef DEBUG_WELL_SELECTION
+        multi = (cssr-bread > 1);
+        if (multi)
+          { printf(" CLUSTER: %d - %d:",bread,cssr);
+            for (j = bread+1; j < cssr; j++)
+              { printf(" %d",Reads[j].fpulse - (Reads[j-1].fpulse+Reads[j-1].rlen));
+                if (Reads[j].fpulse - (Reads[j-1].fpulse+Reads[j-1].rlen) > 60)
+                  printf(" XXX");
+              }
+            printf(" (%d)\n",Reads[bread].origin);
+          }
+#endif
+
+        lread = -1;
+        score = best = 0;
+        for (j = i; bread < cssr; j++)
+          { if (j < novl)
+              { bread = ovls[j].bread;
+                ipath = &(ovls[j].path);
+              }
+
+            if (j >= novl || bread != lread)
+              { if (score > best)
+                  { best  = score;
+                    bnbeg = snbeg;
+                  }
+                score = 0;
+                snbeg = j;
+              }
+
+            if (j >= novl || bread >= cssr)
+              break;
+
+#ifdef DEBUG_WELL_SELECTION
+            if (multi)
+              printf("    %3d: %5d %5d  [%5d,%5d] [%5d,%5d] %c\n",
+                     j,aread,bread,ipath->abpos,ipath->aepos,ipath->bbpos,ipath->bepos,
+                     COMP(ovls[j].flags) ? 'c' : 'n');
+#endif
+
+            score += ipath->aepos - ipath->abpos;
+            lread = bread;
+          }
+
+        if (best > 0)
+          { bread = ovls[bnbeg].bread;
+            for (t = bnbeg; t < j; t++)
+              if (ovls[t].bread == bread)
+                ovls[k++] = ovls[t];
+#ifdef DEBUG_WELL_SELECTION
+            if (multi)
+              printf("    %3d -> %d\n",bnbeg,best);
+#endif
+          }
+      }
+    novl = k;
   }
 
   //  Find the high-coverage intervals over the pair-merged alignment intervals
@@ -501,6 +579,7 @@ int main(int argc, char *argv[])
         exit (1);
       }
     Trim_DB(DB);
+    Reads = DB->reads;
   }
 
   //  Initialize statistics gathering
@@ -609,6 +688,7 @@ int main(int argc, char *argv[])
 
           fclose(MSK_AFILE);
           fclose(MSK_DFILE);
+          fclose(input);
         }
 
       Free_Block_Arg(parse);
