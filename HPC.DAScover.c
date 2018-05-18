@@ -862,9 +862,7 @@ int main(int argc, char *argv[])
         out = fopen(name, "w");
       }
   
-    fprintf(out, "DAScover");
-    if (VERBOSE)
-      fprintf(out, " -v");
+    fprintf(out, "DAScover  -v");
     if (usepath)
       fprintf(out, " %s/%s %s/%s.%d.%d.las", pwd, root, pwd, root, lblock, BLOCKID);
     else
