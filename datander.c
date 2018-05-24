@@ -267,4 +267,5 @@ int main(int argc, char *argv[])
   }
 
   Clean_Exit(0);
+  exit (0);
 }

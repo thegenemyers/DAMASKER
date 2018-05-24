@@ -276,6 +276,7 @@ int main(int argc, char *argv[])
         fprintf(stderr,"\n");
         fprintf(stderr,"     Script control.\n");
         fprintf(stderr,"      -v: Run all commands in script in verbose mode.\n");
+        fprintf(stderr,"      -f: Place script bundles in separate files with prefix <name>\n");
         fprintf(stderr,"      -l: Include the last block in the calculation\n");
         fprintf(stderr,"      -B: # of block compares per command job\n");
         fprintf(stderr,"      -F: Restart computation from the beginnning\n");

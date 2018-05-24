@@ -504,10 +504,10 @@ no_mers:
  ********************************************************************************************/
 
   //  After the initial sort, all equal K-tuples are contiguous, and for a given K-tuple read,rpos
-  //    is in sorted order because the sort is stable.  For a given read, record the distance between
-  //    consecutive positions with the same K-mer in the .code field.  Afterwords, the array is
-  //    stably resorted on read,rpos so that for each read one has effectively a "linked list" of
-  //    positions with equal K-mers.
+  //   is in sorted order because the sort is stable.  For a given read, record the distance between
+  //   consecutive positions with the same K-mer in the .code field.  Afterwords, the array is
+  //   stably resorted on read,rpos so that for each read one has effectively a "linked list" of
+  //   positions with equal K-mers.
 
 static KmerPos  *MG_alist;
 
