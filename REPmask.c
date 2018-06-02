@@ -292,6 +292,7 @@ static void PARTITION(int aread, Overlap *ovls, int novl)
 
   { int   i, j, k, t;
     int   bread, lread, cssr;
+    int   DBreads, alow, ahigh;
     Path *ipath;
     int   best, score;
     int   bnbeg, snbeg;
@@ -299,11 +300,26 @@ static void PARTITION(int aread, Overlap *ovls, int novl)
     int   multi;
 #endif
 
+    DBreads = DB->nreads;
+    for (j = aread+1; j < DBreads; j++)
+      if ((Reads[j].flags & DB_CSS) == 0)
+        break;
+    ahigh = j;
+    for (j = aread; j >= 0; j--)
+      if ((Reads[j].flags & DB_CSS) == 0)
+        break;
+    alow = j;
+
     k = 0;
     for (i = 0; i < novl; i = j)
       { bread = ovls[i].bread;
 
-        for (j = bread+1; j < DB_LAST; j++)
+        if (alow <= bread && bread < ahigh)
+          { j += 1;
+            continue;
+          }
+
+        for (j = bread+1; j < DBreads; j++)
           if ((Reads[j].flags & DB_CSS) == 0)
             break;
         cssr = j;
