@@ -418,7 +418,7 @@ int main(int argc, char *argv[])
         fprintf(out,HPC_MASK,jobid++);
         fprintf(out," \"");
 #endif
-        fprintf(out,"TANmask -m%s",MASK_NAME);
+        fprintf(out,"TANmask -n%s",MASK_NAME);
         if (VON)
           fprintf(out," -v");
         if (LINT != 500)

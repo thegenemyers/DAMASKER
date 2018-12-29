@@ -275,6 +275,7 @@ static int make_a_pass(FILE *input, void (*ACTION)(int, Overlap *, int), int tra
 
 int main(int argc, char *argv[])
 { char       *root, *dpwd;
+  int         status;
   int         c;
   char       *MASK_NAME;
 
@@ -321,9 +322,7 @@ int main(int argc, char *argv[])
 
   //  Open trimmed DB
 
-  { int status;
-
-    status = Open_DB(argv[1],DB);
+  { status = Open_DB(argv[1],DB);
     if (status < 0)
       exit (1);
     if (DB->part)
@@ -353,7 +352,10 @@ int main(int argc, char *argv[])
   //    from .db file
 
   dpwd = PathTo(argv[1]);
-  root = Root(argv[1],".db");
+  if (status)
+    root = Root(argv[1],".dam");
+  else
+    root = Root(argv[1],".db");
 
   for (c = 2; c < argc; c++)
     { Block_Looper *parse;
@@ -376,7 +378,10 @@ int main(int argc, char *argv[])
             if (p != NULL)
               { part = strtol(p+1,&eptr,10);
                 if (*eptr == '\0' && eptr != p+1)
-                  { dbfile = Fopen(Catenate(dpwd,"/",root,".db"),"r");
+                  { if (status)
+                      dbfile = Fopen(Catenate(dpwd,"/",root,".dam"),"r");
+                    else
+                      dbfile = Fopen(Catenate(dpwd,"/",root,".db"),"r");
                     if (dbfile == NULL)
                       exit (1);
                     if (fscanf(dbfile,DB_NFILE,&nfiles) != 1)
