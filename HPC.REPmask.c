@@ -575,10 +575,6 @@ int main(int argc, char *argv[])
               fprintf(out," temp%d/%s.R%d.%d",i,root,SPAN,i);
             else
               fprintf(out," %s.R%d.%d",root,SPAN,i);
-            if (usepath)
-              fprintf(out," %s/%s",pwd,root);
-            else
-              fprintf(out," %s",root);
             if (DON)
               fprintf(out," temp%d/%s.%d.%s.%c%d-%d",i,root,i,root,BLOCK_SYMBOL,base,base+(SPAN-1));
             else
@@ -588,7 +584,7 @@ int main(int argc, char *argv[])
             if (DON)
               fprintf(out," temp%d/%s.R%d.%d",i,root,SPAN,i);
             else
-              fprintf(out," %s.R%d.%d",root,SPAN,j);
+              fprintf(out," %s.R%d.%d",root,SPAN,i);
 #ifdef HPC
             fprintf(out,"\"");
 #endif
@@ -616,7 +612,7 @@ int main(int argc, char *argv[])
     //  Finish with MASKrep
 
     if (ONAME != NULL)
-      { sprintf(name,"%s.05.MASK",ONAME);
+      { sprintf(name,"%s.03.MASK",ONAME);
         out = fopen(name,"w");
       }
  
@@ -658,7 +654,7 @@ int main(int argc, char *argv[])
     }
 
     if (ONAME != NULL)
-      { sprintf(name,"%s.06.RM",ONAME);
+      { sprintf(name,"%s.04.RM",ONAME);
         out = fopen(name,"w");
       }
 
