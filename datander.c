@@ -66,7 +66,7 @@ static int read_DB(DAZZ_DB *block, char *name, int kmer)
           }
     }
 
-  Read_All_Sequences(block,0);
+  Load_All_Reads(block,0);
 
   return (isdam);
 }
