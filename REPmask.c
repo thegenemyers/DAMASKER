@@ -302,11 +302,11 @@ static void PARTITION(int aread, Overlap *ovls, int novl)
 
     DBreads = DB->nreads;
     for (j = aread+1; j < DBreads; j++)
-      if ((Reads[j].flags & DB_CSS) == 0)
+      if ((Reads[j].flags & DB_CCS) == 0)
         break;
     ahigh = j;
     for (j = aread; j >= 0; j--)
-      if ((Reads[j].flags & DB_CSS) == 0)
+      if ((Reads[j].flags & DB_CCS) == 0)
         break;
     alow = j;
 
@@ -320,7 +320,7 @@ static void PARTITION(int aread, Overlap *ovls, int novl)
           }
 
         for (j = bread+1; j < DBreads; j++)
-          if ((Reads[j].flags & DB_CSS) == 0)
+          if ((Reads[j].flags & DB_CCS) == 0)
             break;
         cssr = j;
 
